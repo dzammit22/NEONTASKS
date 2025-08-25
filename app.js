@@ -189,59 +189,83 @@
   }
 
   // ---------- CSV Loader (pool) ----------
-  async function loadCharactersFromCSV(){
-    const path = "assets/Cyberpunk App.csv";
+  // --- helper: try several candidate paths and return the first that loads ---
+async function fetchFirstExisting(paths){
+  for (const p of paths){
     try{
-      const res = await fetch(path, {cache:"no-store"});
-      if(!res.ok) throw new Error("csv missing");
-      const text = await res.text();
-
-      const { header, rows } = parseCSV(text);
-      const idx = {
-        cat: header.findIndex(h=>/category/i.test(h)),
-        img: header.findIndex(h=>/image/i.test(h)),
-        name: header.findIndex(h=>/name/i.test(h)),
-        rarity: header.findIndex(h=>/rarity/i.test(h))
-      };
-      if (idx.cat === -1) throw new Error("Category column not found in CSV");
-
-      const byCat = {};
-      for(const cols of rows){
-        if (!cols || !cols.length) continue;
-
-        const csvCategory = (cols[idx.cat] || "Other").trim();
-        const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
-        const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
-
-        const rawImg = idx.img >= 0 ? cols[idx.img] : "";
-        const normalized = normalizeImageName(rawImg, categoryLower);
-        const chosen = normalized
-          ? `assets/characters/${categoryLower}/${normalized}`
-          : `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
-
-        (byCat[cat] ||= []).push({
-          category: cat,
-          image: chosen,
-          name: (idx.name >= 0 ? cols[idx.name] : "").trim() || `${cat} Ally`,
-          rarity: (idx.rarity >= 0 ? cols[idx.rarity] : "").trim() || "R"
-        });
-      }
-      return byCat;
-    }catch(e){
-      console.warn("CSV loading failed:", e);
-      const byCat = {};
-      for(const cat of CATEGORIES){
-        const slug = cat.toLowerCase().replace(/\s+/g, '-');
-        byCat[cat] = [1,2,3].map(n=>({
-          category: cat,
-          image: `assets/characters/${slug}/${slug}-${n}.png`,
-          name: `${cat} Operative ${n}`,
-          rarity: ["R","SR","SSR"][n-1] || "R"
-        }));
-      }
-      return byCat;
-    }
+      const res = await fetch(p, { cache:"no-store" });
+      if (res.ok) return await res.text();
+    }catch(_) { /* ignore and try next */ }
   }
+  throw new Error("No CSV found at any candidate path");
+}
+
+// ---------- CSV Loader (pool) — robust w/ multiple paths + warning toast ----------
+async function loadCharactersFromCSV(){
+  // common places/filenames people use; add your own if needed
+  const candidates = [
+    "assets/Cyberpunk App.csv",
+    "assets/cyberpunk app.csv",
+    "assets/Cyberpunk%20App.csv",
+    "assets/characters.csv",
+    "assets/data/characters.csv",
+    "assets/Data/characters.csv"
+  ];
+
+  try{
+    const text = await fetchFirstExisting(candidates);
+
+    const { header, rows } = parseCSV(text);
+    const idx = {
+      cat: header.findIndex(h=>/category/i.test(h)),
+      img: header.findIndex(h=>/image/i.test(h)),
+      name: header.findIndex(h=>/name/i.test(h)),
+      rarity: header.findIndex(h=>/rarity/i.test(h))
+    };
+    if (idx.cat === -1) throw new Error("Category column not found in CSV");
+
+    const byCat = {};
+    for(const cols of rows){
+      if (!cols || !cols.length) continue;
+
+      const csvCategory = (cols[idx.cat] || "Other").trim();
+      const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
+      const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
+
+      // Normalize file names like "fitness-1.png" / "Work-2.webp"
+      const rawImg = idx.img >= 0 ? cols[idx.img] : "";
+      const normalized = normalizeImageName(rawImg, categoryLower);
+      const chosen = normalized
+        ? `assets/characters/${categoryLower}/${normalized}`
+        : `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
+
+      (byCat[cat] ||= []).push({
+        category: cat,
+        image: chosen,
+        name: (idx.name >= 0 ? cols[idx.name] : "").trim() || `${cat} Ally`,
+        rarity: (idx.rarity >= 0 ? cols[idx.rarity] : "").trim() || "R"
+      });
+    }
+    return byCat;
+
+  }catch(e){
+    console.warn("CSV loading failed, using generic names.", e);
+    // Friendly heads‑up so you notice it in the UI
+    try { toast("⚠️ Could not load character names CSV — using defaults"); } catch(_) {}
+    // Fallback pool with generic names
+    const byCat = {};
+    for(const cat of CATEGORIES){
+      const slug = cat.toLowerCase().replace(/\s+/g, '-');
+      byCat[cat] = [1,2,3].map(n=>({
+        category: cat,
+        image: `assets/characters/${slug}/${slug}-${n}.png`,
+        name: `${cat} Operative ${n}`,
+        rarity: ["R","SR","SSR"][n-1] || "R"
+      }));
+    }
+    return byCat;
+  }
+}
 
   // ---------- Session Picks ----------
   function makeSessionCharacters(pool){
