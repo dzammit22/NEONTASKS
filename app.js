@@ -1,8 +1,9 @@
-/* NEON/TASKS — app.js (v0.13)
-   - Character data loader: JSON-first, CSV fallback (spaces/%20, BOM, semicolon, flexible headers)
+/* NEON/TASKS — app.js (v0.13.1)
+   - ABS() absolute path resolver for GitHub Pages subpaths
+   - Character data loader: JSON-first, CSV fallback (handles spaces/%20, BOM, semicolon, flexible headers)
+   - One-time runtime diagnostics probe (tells you which file was found)
    - Summary / Tasks / Calendar / Characters / Boss
    - Import/Export: completed-only + FULL backup (merge or replace)
-   - Mobile-friendly interactions, toasts, lightbox
 */
 
 (() => {
@@ -34,6 +35,52 @@
   const STATE = loadState();
   document.addEventListener("DOMContentLoaded", init);
 
+  // ---------- ABS path resolver & fetch helpers ----------
+  const ABS = p => new URL(p, document.baseURI).toString();
+
+  async function fetchJSONIfOk(path){
+    const r = await fetch(ABS(path), { cache: "no-store" });
+    if (!r.ok) throw new Error(`${path} → ${r.status}`);
+    return r.json();
+  }
+  async function fetchTextIfOk(path){
+    const r = await fetch(ABS(path), { cache: "no-store" });
+    if (!r.ok) throw new Error(`${path} → ${r.status}`);
+    return r.text();
+  }
+
+  // ---------- One-time diagnostics probe ----------
+  (async () => {
+    try {
+      if (location.protocol === "file:") {
+        setTimeout(() => {
+          alert("You're opening the app via file://\n\nBrowsers block fetch() from file://.\nUse a local server or GitHub Pages.");
+        }, 30);
+      }
+      const trials = [
+        ["json", "assets/characters.json"],
+        ["json", "assets/characters/index.json"],
+        ["text", "assets/Cyberpunk%20App.csv"],
+        ["text", "assets/Cyberpunk App.csv"],
+        ["text", "assets/characters.csv"],
+        ["text", "assets/data/characters.csv"]
+      ];
+      let found = null, last = null;
+      for (const [type, p] of trials){
+        try {
+          const url = ABS(p);
+          const r = await fetch(url, { cache:"no-store" });
+          last = `${url} → ${r.status}`;
+          if (r.ok) { found = url; break; }
+        } catch (e) { last = `${ABS(p)} → ${String(e)}`; }
+      }
+      const msg = found ? `✅ Data detected at:\n${found}` : `❌ No characters.json/CSV found under /assets/\nLast attempt: ${last}`;
+      try { (typeof window.toast === "function" ? window.toast : alert)(msg); } catch { alert(msg); }
+      console.log("[NEON/TASKS] Data probe:", msg);
+    } catch {}
+  })();
+
+  // ---------- State load/save ----------
   function loadState() {
     let s;
     try { s = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { s = {}; }
@@ -150,8 +197,6 @@
     if (numMatch) return `${categoryLower}-${numMatch[1]}.png`;
     return s;
   }
-  async function fetchJSONIfOk(path){ const r=await fetch(path,{cache:"no-store"}); if(!r.ok) throw new Error(`${path} → ${r.status}`); return r.json(); }
-  async function fetchTextIfOk(path){ const r=await fetch(path,{cache:"no-store"}); if(!r.ok) throw new Error(`${path} → ${r.status}`); return r.text(); }
 
   async function loadCharactersFromCSV(){
     // Prefer JSON if present (simpler than CSV)
@@ -160,7 +205,8 @@
       try{
         const data = await fetchJSONIfOk(p);
         if (isValidCharacterJSON(data)) {
-          CHAR_SOURCE_INFO = { source:"json", path:p, error:null };
+          CHAR_SOURCE_INFO = { source:"json", path:ABS(p), error:null };
+          console.info("[NEON/TASKS] Characters from JSON:", ABS(p));
           return normaliseCharacterJSONToPool(data);
         }
       }catch(_){}
@@ -173,12 +219,14 @@
     for(const p of csvCandidates){
       try{
         const text = await fetchTextIfOk(p);
-        CHAR_SOURCE_INFO = { source:"csv", path:p, error:null };
+        CHAR_SOURCE_INFO = { source:"csv", path:ABS(p), error:null };
+        console.info("[NEON/TASKS] Characters from CSV:", ABS(p));
         return parseCharacterCSVToPool(text);
       }catch(_){}
     }
     CHAR_SOURCE_INFO = { source:"default", path:null, error:"No JSON/CSV found" };
-    toast("⚠️ Character data not found; using defaults");
+    console.warn("[NEON/TASKS] Character data not found. Using defaults.");
+    try { toast("⚠️ Character data not found; using defaults"); } catch(_) {}
     return makeDefaultPool();
   }
   function isValidCharacterJSON(data){
