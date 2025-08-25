@@ -8,6 +8,58 @@
    - Preserves existing localStorage (v0.7 key)
 */
 
+// --- CSV utils (robust) ---
+function stripBOM(s){ return s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s; }
+
+function parseCSV(text) {
+  text = stripBOM(text).replace(/\r\n/g, '\n');
+  // tolerate semicolon-delimited spreadsheets
+  const delimiter = (text.includes(';\n') || text.includes('";"')) ? ';' : ',';
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }  // escaped quote
+        else { inQuotes = false; }
+      } else { cell += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === delimiter) { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+  }
+  row.push(cell); rows.push(row);
+
+  // drop trailing empty line(s)
+  while (rows.length && rows[rows.length - 1].every(x => (x||'').trim() === '')) rows.pop();
+
+  const header = rows.shift().map(h => (h||'').trim());
+  return { header, rows };
+}
+
+function normalizeImageName(raw, categoryLower) {
+  if (!raw) return null;
+  let s = String(raw).trim()
+    .replace(/^[“”"']+/, '')
+    .replace(/[“”"']+$/, '');
+  s = s.split('/').pop().split('\\').pop().trim();
+  s = s.replace(/[.\s]+$/g, '');
+  if (!s) return null;
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(s)) s += '.png';
+
+  // allow "work-1.png", "1", etc.
+  const canon = new RegExp(`^${categoryLower}-([1-3])\\.(png|jpe?g|webp|gif)$`, 'i');
+  if (canon.test(s)) return s;
+  const num = s.match(/([1-3])(?!\d)/);
+  if (num) return `${categoryLower}-${num[1]}.png`;
+  return s; // fallback to whatever was provided
+}
+
+
 (() => {
   "use strict";
 
