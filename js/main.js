@@ -1,5 +1,5 @@
-import { initTabs } from './ui/tabs.js';
-import { setupAddDialog } from './ui/dialogs.js'; // Note: your file is dialog.js but import says dialogs.js
+import { setupTabs } from './ui/tabs.js';
+import { setupAddDialog } from './ui/dialog.js'; // Fixed filename
 import { setupTaskToolbar, renderTasks } from './features/tasks.js';
 import { setupCalendar, renderCalendar } from './features/calendar.js';
 import { setupConfig, setupReset } from './features/config.js'; // Missing setupConfig import
@@ -21,7 +21,7 @@ window.SESSION_CHAR = SESSION_CHAR;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Setup all modules
-  initTabs(); // Note: your tabs.js exports setupTabs but main.js calls initTabs
+  setupTabs();
   setupAddDialog();
   setupTaskToolbar();
   setupCalendar();
