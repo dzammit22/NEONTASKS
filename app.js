@@ -208,7 +208,8 @@
 }
 
   // ---------- CSV Loader (pool) ----------
-  async function loadCharactersFromCSV(){
+  // Replace the entire loadCharactersFromCSV function in your app.js
+async function loadCharactersFromCSV(){
   const path = "assets/Cyberpunk App.csv";
   try{
     const res = await fetch(path, {cache:"no-store"});
@@ -224,10 +225,10 @@
     console.log("CSV parsed - rows:", rows.length);
     
     const idx = {
-      cat: header.findIndex(h=>/category/i.test(h)),
-      img: header.findIndex(h=>/image/i.test(h)),
-      name: header.findIndex(h=>/name\/title|name/i.test(h)), // Handle "Name/Title" column
-      rarity: header.findIndex(h=>/rarity/i.test(h))
+      cat: header.findIndex(h => h && /category/i.test(h.trim())),
+      img: header.findIndex(h => h && /image/i.test(h.trim())),
+      name: header.findIndex(h => h && /name\/title|name/i.test(h.trim())),
+      rarity: header.findIndex(h => h && /rarity/i.test(h.trim()))
     };
     
     console.log("Column indices:", idx);
@@ -235,43 +236,66 @@
     if (idx.cat === -1) throw new Error("Category column not found in CSV");
 
     const byCat = {};
-    for(const cols of rows){
+    let processedCount = 0;
+    
+    for(let i = 0; i < rows.length; i++){
+      const cols = rows[i];
       if (!cols || !cols.length) continue;
 
-      const csvCategory = (cols[idx.cat] || "Other").trim();
-      const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
+      // Safely get values with fallbacks
+      const csvCategory = (cols[idx.cat] || "").toString().trim();
+      if (!csvCategory || csvCategory === "Unknown") continue; // Skip unknown/empty categories
       
+      const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
       const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
 
-      const rawImg = idx.img >= 0 ? cols[idx.img] : "";
-      console.log(`Processing ${csvCategory} -> ${cat} (${categoryLower}), image: ${rawImg}`);
+      const rawImg = idx.img >= 0 ? (cols[idx.img] || "").toString().trim() : "";
+      const rawName = idx.name >= 0 ? (cols[idx.name] || "").toString().trim() : "";
+      const rawRarity = idx.rarity >= 0 ? (cols[idx.rarity] || "").toString().trim() : "";
+      
+      console.log(`Row ${i}: ${csvCategory} -> ${cat} (${categoryLower}), name: "${rawName}", image: "${rawImg}"`);
       
       let chosen;
-      if (rawImg && rawImg.trim()) {
+      if (rawImg) {
         // Use the image filename from CSV, but ensure proper path
-        const filename = rawImg.trim();
+        const filename = rawImg;
         chosen = `assets/characters/${categoryLower}/${filename}`;
       } else {
         // Fallback to generated filename
         chosen = `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
       }
 
-      (byCat[cat] ||= []).push({
+      const character = {
         category: cat,
         image: chosen,
-        name: (idx.name >= 0 ? cols[idx.name] : "").trim() || `${cat} Ally`,
-        rarity: (idx.rarity >= 0 ? cols[idx.rarity] : "").trim() || "R"
-      });
+        name: rawName || `${cat} Ally`,
+        rarity: rawRarity || "R"
+      };
+      
+      console.log("Created character:", character);
+
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push(character);
+      processedCount++;
     }
     
+    console.log(`Processed ${processedCount} characters`);
     console.log("Characters loaded by category:", Object.keys(byCat));
     Object.entries(byCat).forEach(([cat, chars]) => {
       console.log(`${cat}: ${chars.length} characters`);
+      chars.forEach((char, idx) => {
+        console.log(`  ${idx + 1}. ${char.name} (${char.rarity}) - ${char.image}`);
+      });
     });
+    
+    // Ensure we have at least some characters for each category
+    if (Object.keys(byCat).length === 0) {
+      throw new Error("No valid characters found in CSV");
+    }
     
     return byCat;
   }catch(e){
-    console.warn("CSV loading failed:", e);
+    console.error("CSV loading failed:", e);
     console.log("Falling back to generated characters");
     
     // Fallback to generated characters
@@ -287,6 +311,32 @@
     }
     return byCat;
   }
+}
+
+// Also add this debug function to check the loaded data
+function debugCharacterData() {
+  console.log("=== DEBUG CHARACTER DATA ===");
+  console.log("CHAR_POOL:", CHAR_POOL);
+  console.log("SESSION_CHAR:", SESSION_CHAR);
+  console.log("Categories:", CATEGORIES);
+  console.log("CSV mapping:", CSV_TO_APP_CATEGORY);
+  
+  // Test a specific category
+  if (CHAR_POOL && CHAR_POOL.Fitness) {
+    console.log("Fitness characters:", CHAR_POOL.Fitness);
+  }
+  
+  // Test session characters
+  if (SESSION_CHAR) {
+    Object.entries(SESSION_CHAR).forEach(([cat, char]) => {
+      console.log(`${cat} session character:`, char);
+    });
+  }
+}
+
+// Make debug function globally available
+if (typeof window !== 'undefined') {
+  window.debugCharacterData = debugCharacterData;
 }
 
   // ---------- Session Picks ----------
