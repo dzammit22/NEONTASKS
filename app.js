@@ -1183,4 +1183,12 @@ function debugCharacters() {
 
 // Make it globally accessible for debugging
 window.debugCharacters = debugCharacters;
+
+   // Debug override - add this temporarily
+window.debugCharacters = function() {
+  console.log("CHAR_POOL:", CHAR_POOL);
+  console.log("SESSION_CHAR:", SESSION_CHAR);
+  console.log("State characters:", STATE.characters);
+};
+   
 })();
