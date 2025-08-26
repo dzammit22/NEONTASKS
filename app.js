@@ -1324,6 +1324,266 @@ function importCompletedTasksFromJSON(payload){
 }
 
 // ---------- UPDATED CONFIG SETUP ----------
+// ========== STEP 1: REPLACE the exportCompletedTasksJSON function ==========
+// Find the existing exportCompletedTasksJSON function and replace it with this:
+
+function exportFullBackup(){
+  // Create a complete snapshot of the current state
+  const fullBackup = {
+    version: "neon-tasks-full-backup/v1",
+    exportedAt: new Date().toISOString(),
+    appVersion: "0.11",
+    data: {
+      // Core app data
+      tasks: STATE.tasks || [],
+      characters: STATE.characters || {},
+      config: STATE.config || deepClone(DEFAULT_CONFIG),
+      power: STATE.power || 0,
+      calendarCursor: STATE.calendarCursor || todayStr().slice(0,7),
+      seedVersion: STATE.seedVersion || 0,
+      meta: STATE.meta || { installedAt: Date.now(), completedCount: 0 },
+      activity: STATE.activity || [],
+      
+      // Additional metadata for verification
+      exportMeta: {
+        totalTasks: STATE.tasks?.length || 0,
+        completedTasks: STATE.tasks?.filter(t => t.done)?.length || 0,
+        unlockedCharacters: Object.keys(STATE.characters || {}).length,
+        totalPower: STATE.power || 0,
+        lastActivity: STATE.activity?.[0]?.when || null
+      }
+    }
+  };
+
+  // Create and download the backup file
+  const blob = new Blob([JSON.stringify(fullBackup, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const timestamp = new Date().toISOString().slice(0,16).replace(/[:T]/g, '-');
+  a.href = url;
+  a.download = `neontasks-backup-${timestamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  
+  const stats = fullBackup.data.exportMeta;
+  toast(`📤 <strong>Full backup exported</strong><br>
+    ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalPower} power`);
+  
+  console.log("Full backup exported:", fullBackup);
+}
+
+// ========== STEP 2: REPLACE the importCompletedTasksFromJSON function ==========
+// Find the existing importCompletedTasksFromJSON function and replace it with this:
+
+function importFullBackup(backupData){
+  try {
+    // Validate the backup format
+    if (!backupData || typeof backupData !== 'object') {
+      throw new Error("Invalid backup format - not a valid object");
+    }
+    
+    if (!backupData.version || !backupData.version.includes('neon-tasks')) {
+      throw new Error("Invalid backup format - missing or incorrect version");
+    }
+    
+    if (!backupData.data) {
+      throw new Error("Invalid backup format - no data section found");
+    }
+    
+    const data = backupData.data;
+    let importStats = {
+      tasks: 0,
+      characters: 0,
+      power: 0,
+      activities: 0,
+      errors: []
+    };
+    
+    console.log("Starting full backup import...");
+    console.log("Backup data:", backupData);
+    
+    // Import tasks
+    if (Array.isArray(data.tasks)) {
+      STATE.tasks = data.tasks.map(task => ({
+        id: task.id || uid(),
+        title: task.title || "Imported Task",
+        category: CATEGORIES.includes(task.category) ? task.category : "Other",
+        priority: ["Low","Medium","High"].includes(task.priority) ? task.priority : "Medium",
+        type: task.type || "oneoff",
+        start: task.start || null,
+        end: task.end || null,
+        estimate: Number(task.estimate) || 0,
+        repeat: task.repeat || null,
+        notes: task.notes || "",
+        due: task.due || null,
+        done: Boolean(task.done),
+        createdAt: task.createdAt || new Date().toISOString(),
+        completedAt: task.completedAt || null
+      }));
+      importStats.tasks = STATE.tasks.length;
+    } else {
+      STATE.tasks = [];
+      importStats.errors.push("No valid tasks found in backup");
+    }
+    
+    // Import characters
+    if (data.characters && typeof data.characters === 'object') {
+      STATE.characters = {};
+      for (const [category, charData] of Object.entries(data.characters)) {
+        if (CATEGORIES.includes(category) && charData) {
+          STATE.characters[category] = {
+            name: charData.name || `${category} Ally`,
+            rarity: charData.rarity || "R",
+            category: category,
+            level: Math.max(1, Number(charData.level) || 1),
+            bond: Math.max(0, Math.min(100, Number(charData.bond) || 0)),
+            xp: Math.max(0, Number(charData.xp) || 0),
+            xpToNext: Math.max(100, Number(charData.xpToNext) || 100),
+            image: charData.image || defaultPortraitForCategory(category)
+          };
+          importStats.characters++;
+        }
+      }
+    } else {
+      STATE.characters = {};
+      importStats.errors.push("No valid characters found in backup");
+    }
+    
+    // Import config
+    if (data.config && typeof data.config === 'object') {
+      STATE.config = {
+        xpPreset: data.config.xpPreset || "Default",
+        scale: data.config.scale || "Linear",
+        bossTarget: Math.max(10, Number(data.config.bossTarget) || 300),
+        weights: {
+          priority: {
+            Low: Number(data.config.weights?.priority?.Low) || 1,
+            Medium: Number(data.config.weights?.priority?.Medium) || 2,
+            High: Number(data.config.weights?.priority?.High) || 3
+          },
+          estHour: Number(data.config.weights?.estHour) || 1,
+          streak: Number(data.config.weights?.streak) || 0.5
+        }
+      };
+    } else {
+      STATE.config = deepClone(DEFAULT_CONFIG);
+      importStats.errors.push("No valid config found, using defaults");
+    }
+    
+    // Import power
+    STATE.power = Math.max(0, Number(data.power) || 0);
+    importStats.power = STATE.power;
+    
+    // Import calendar cursor
+    STATE.calendarCursor = data.calendarCursor || todayStr().slice(0,7);
+    
+    // Import seed version
+    STATE.seedVersion = Number(data.seedVersion) || 0;
+    
+    // Import meta
+    if (data.meta && typeof data.meta === 'object') {
+      STATE.meta = {
+        installedAt: data.meta.installedAt || Date.now(),
+        completedCount: Math.max(0, Number(data.meta.completedCount) || 0)
+      };
+    } else {
+      STATE.meta = { installedAt: Date.now(), completedCount: 0 };
+      importStats.errors.push("No valid meta found, using defaults");
+    }
+    
+    // Import activity
+    if (Array.isArray(data.activity)) {
+      STATE.activity = data.activity.map(act => ({
+        when: act.when || new Date().toISOString(),
+        title: act.title || "Imported Activity",
+        xp: Number(act.xp) || 0,
+        kind: act.kind || "generic"
+      })).slice(0, 100); // Keep only last 100 activities
+      ACTIVITY = STATE.activity; // Update global ACTIVITY reference
+      importStats.activities = STATE.activity.length;
+    } else {
+      STATE.activity = [];
+      ACTIVITY = [];
+      importStats.errors.push("No valid activity found");
+    }
+    
+    // Save to localStorage
+    save();
+    
+    // Re-render everything
+    renderAll();
+    
+    // Show success toast
+    const errorText = importStats.errors.length > 0 ? 
+      ` (${importStats.errors.length} warnings)` : "";
+    
+    toast(`📥 <strong>Full backup imported${errorText}</strong><br>
+      ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.power} power`);
+    
+    console.log("Import completed successfully:", importStats);
+    
+    // Log any errors/warnings
+    if (importStats.errors.length > 0) {
+      console.warn("Import warnings:", importStats.errors);
+    }
+    
+    return importStats;
+    
+  } catch (error) {
+    console.error("Full backup import failed:", error);
+    toast(`<span class="danger">Import failed: ${error.message}</span>`);
+    throw error;
+  }
+}
+
+// ========== STEP 3: ADD this new function (legacy support) ==========
+// Add this function right after the importFullBackup function:
+
+function importCompletedTasksFromJSON(payload){
+  // Keep this for backward compatibility with old exports
+  const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+  let added = 0;
+
+  const has = new Set(
+    STATE.tasks.filter(t=>t.done).map(t => `${t.title}__${t.completedAt || t.createdAt || ""}`)
+  );
+
+  for(const r of items){
+    const title = String(r.title || "").trim();
+    if(!title) continue;
+    const completedAt = r.completedAt || r.completed_at || null;
+    const key = `${title}__${completedAt || ""}`;
+    if(has.has(key)) continue;
+
+    const t = {
+      id: uid(),
+      title,
+      category: CATEGORIES.includes(r.category) ? r.category : "Other",
+      priority: ["Low","Medium","High"].includes(r.priority) ? r.priority : "Low",
+      type: r.type || "oneoff",
+      estimate: Number(r.estimate || 0),
+      notes: String(r.notes || ""),
+      start: null,
+      end: null,
+      repeat: null,
+      due: r.due || null,
+      done: true,
+      createdAt: r.createdAt || completedAt || new Date().toISOString(),
+      completedAt: completedAt || new Date().toISOString()
+    };
+    STATE.tasks.push(t);
+    has.add(key);
+    added++;
+  }
+  save();
+  return added;
+}
+
+// ========== STEP 4: REPLACE your entire setupConfig function ==========
+// Find your setupConfig function and replace it completely with this:
+
 function setupConfig(){
   const preset = document.getElementById("xp-preset");
   const scale = document.getElementById("xp-scale");
@@ -1367,6 +1627,77 @@ function setupConfig(){
       } 
     }); 
   }
+
+  // Updated Import/Export buttons - FULL BACKUP
+  const exportBtn = document.getElementById("export-completed");
+  const importBtn = document.getElementById("import-completed");
+  const importFile = document.getElementById("import-completed-file");
+  
+  if(exportBtn) {
+    // Update button text and function
+    exportBtn.textContent = "Export Full Backup";
+    exportBtn.addEventListener("click", exportFullBackup);
+  }
+  
+  if(importBtn && importFile){
+    // Update button text
+    importBtn.textContent = "Import Full Backup";
+    
+    importBtn.addEventListener("click", ()=> importFile.click());
+    importFile.addEventListener("change", async ()=>{
+      const file = importFile.files?.[0];
+      if(!file) return;
+      
+      // Show confirmation dialog for full import
+      const confirmed = confirm(
+        "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
+        "This will COMPLETELY REPLACE all your current data including:\n" +
+        "• All tasks (completed and pending)\n" +
+        "• All unlocked characters and their levels\n" +
+        "• All power and XP\n" +
+        "• All settings and configuration\n" +
+        "• All activity history\n\n" +
+        "Are you sure you want to proceed?\n\n" +
+        "(Consider exporting your current data first as a backup)"
+      );
+      
+      if (!confirmed) {
+        importFile.value = "";
+        return;
+      }
+      
+      try{
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        
+        // Check if it's a full backup or legacy format
+        if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
+          // Full backup import
+          const stats = importFullBackup(parsed);
+          toast(`📥 <strong>Full backup imported successfully!</strong>`);
+        } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
+          // Legacy completed tasks import
+          const added = importCompletedTasksFromJSON(parsed);
+          toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
+          renderAll();
+        } else if (Array.isArray(parsed)) {
+          // Raw array of tasks
+          const added = importCompletedTasksFromJSON(parsed);
+          toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
+          renderAll();
+        } else {
+          throw new Error("Unrecognized backup format");
+        }
+        
+      }catch(e){
+        console.error("Import error:", e);
+        toast(`<span class="danger">Import failed: ${e.message}</span>`);
+      }finally{
+        importFile.value = "";
+      }
+    });
+  }
+}
 
   // Updated Import/Export buttons - FULL BACKUP
   const exportBtn = document.getElementById("export-completed");
