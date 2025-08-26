@@ -22,14 +22,14 @@
     weights: { priority: { Low:1, Medium:2, High:3 }, estHour: 1, streak: 0.5 }
   };
   const CSV_TO_APP_CATEGORY = {
-    "Training": "Fitness",
-    "Home": "Home",
-    "Work": "Work",
-    "Finance": "Finance",
-    "Skills": "Skills",
-    "Rose Foundation": "Rose",
-    "Unknown": "Other"
-  };
+  "Training": "Fitness",
+  "Home": "Home", 
+  "Work": "Work",
+  "Finance": "Finance",
+  "Skills": "Skills",
+  "Rose Foundation": "Rose",
+  "Unknown": "Other"
+};
 
   // ---------- State ----------
   let SESSION_CHAR = {};   // per-run random pick per category (for previews)
@@ -173,75 +173,121 @@
     return { header, rows };
   }
   function normalizeImageName(raw, categoryLower) {
-    if (!raw) return null;
-    let s = String(raw).trim()
-      .replace(/^[“”"']+/, '')
-      .replace(/[“”"']+$/, '');
-    s = s.split('/').pop().split('\\').pop().trim();
-    s = s.replace(/[.\s]+$/g, '');
-    if (!s) return null;
-    if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(s)) s += '.png';
-    const canon = new RegExp(`^${categoryLower}-([1-3])\\.(png|jpg|jpeg|webp|gif)$`, 'i');
-    if (canon.test(s)) return s;
-    const numMatch = s.match(/([1-3])(?!\d)/);
-    if (numMatch) return `${categoryLower}-${numMatch[1]}.png`;
-    return null;
+  if (!raw) return null;
+  
+  let s = String(raw).trim()
+    .replace(/^["""']+/, '')
+    .replace(/["""']+$/, '');
+  s = s.split('/').pop().split('\\').pop().trim();
+  s = s.replace(/[.\s]+$/g, '');
+  
+  if (!s) return null;
+  
+  // Add extension if missing
+  if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(s)) s += '.png';
+  
+  // Handle the specific naming patterns in your CSV
+  // Your CSV has: fitness-1.png, skill-1.png, home-1.png, etc.
+  const expectedPattern = new RegExp(`^${categoryLower}-([1-3])\\.(png|jpg|jpeg|webp|gif)$`, 'i');
+  if (expectedPattern.test(s)) {
+    return s; // Already in correct format
   }
+  
+  // Handle "skill-" vs "skills" category mismatch
+  if (categoryLower === 'skills' && /^skill-\d+\.(png|jpg|jpeg|webp|gif)$/i.test(s)) {
+    return s; // Keep skill-N.png for Skills category
+  }
+  
+  // Extract number from filename and create proper format
+  const numMatch = s.match(/([1-3])(?!\d)/);
+  if (numMatch) {
+    return `${categoryLower}-${numMatch[1]}.png`;
+  }
+  
+  return s; // Return as-is if we can't normalize
+}
 
   // ---------- CSV Loader (pool) ----------
   async function loadCharactersFromCSV(){
-    const path = "assets/Cyberpunk App.csv";
-    try{
-      const res = await fetch(path, {cache:"no-store"});
-      if(!res.ok) throw new Error("csv missing");
-      const text = await res.text();
-
-      const { header, rows } = parseCSV(text);
-      const idx = {
-        cat: header.findIndex(h=>/category/i.test(h)),
-        img: header.findIndex(h=>/image/i.test(h)),
-        name: header.findIndex(h=>/name/i.test(h)),
-        rarity: header.findIndex(h=>/rarity/i.test(h))
-      };
-      if (idx.cat === -1) throw new Error("Category column not found in CSV");
-
-      const byCat = {};
-      for(const cols of rows){
-        if (!cols || !cols.length) continue;
-
-        const csvCategory = (cols[idx.cat] || "Other").trim();
-        const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
-        const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
-
-        const rawImg = idx.img >= 0 ? cols[idx.img] : "";
-        const normalized = normalizeImageName(rawImg, categoryLower);
-        const chosen = normalized
-          ? `assets/characters/${categoryLower}/${normalized}`
-          : `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
-
-        (byCat[cat] ||= []).push({
-          category: cat,
-          image: chosen,
-          name: (idx.name >= 0 ? cols[idx.name] : "").trim() || `${cat} Ally`,
-          rarity: (idx.rarity >= 0 ? cols[idx.rarity] : "").trim() || "R"
-        });
-      }
-      return byCat;
-    }catch(e){
-      console.warn("CSV loading failed:", e);
-      const byCat = {};
-      for(const cat of CATEGORIES){
-        const slug = cat.toLowerCase().replace(/\s+/g, '-');
-        byCat[cat] = [1,2,3].map(n=>({
-          category: cat,
-          image: `assets/characters/${slug}/${slug}-${n}.png`,
-          name: `${cat} Operative ${n}`,
-          rarity: ["R","SR","SSR"][n-1] || "R"
-        }));
-      }
-      return byCat;
+  const path = "assets/Cyberpunk App.csv";
+  try{
+    const res = await fetch(path, {cache:"no-store"});
+    if(!res.ok) {
+      console.warn(`CSV fetch failed: ${res.status} ${res.statusText}`);
+      throw new Error("csv missing");
     }
+    const text = await res.text();
+    console.log("CSV loaded successfully, length:", text.length);
+
+    const { header, rows } = parseCSV(text);
+    console.log("CSV parsed - headers:", header);
+    console.log("CSV parsed - rows:", rows.length);
+    
+    const idx = {
+      cat: header.findIndex(h=>/category/i.test(h)),
+      img: header.findIndex(h=>/image/i.test(h)),
+      name: header.findIndex(h=>/name\/title|name/i.test(h)), // Handle "Name/Title" column
+      rarity: header.findIndex(h=>/rarity/i.test(h))
+    };
+    
+    console.log("Column indices:", idx);
+    
+    if (idx.cat === -1) throw new Error("Category column not found in CSV");
+
+    const byCat = {};
+    for(const cols of rows){
+      if (!cols || !cols.length) continue;
+
+      const csvCategory = (cols[idx.cat] || "Other").trim();
+      const cat = (CSV_TO_APP_CATEGORY[csvCategory] || csvCategory).trim();
+      
+      const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
+
+      const rawImg = idx.img >= 0 ? cols[idx.img] : "";
+      console.log(`Processing ${csvCategory} -> ${cat} (${categoryLower}), image: ${rawImg}`);
+      
+      let chosen;
+      if (rawImg && rawImg.trim()) {
+        // Use the image filename from CSV, but ensure proper path
+        const filename = rawImg.trim();
+        chosen = `assets/characters/${categoryLower}/${filename}`;
+      } else {
+        // Fallback to generated filename
+        chosen = `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
+      }
+
+      (byCat[cat] ||= []).push({
+        category: cat,
+        image: chosen,
+        name: (idx.name >= 0 ? cols[idx.name] : "").trim() || `${cat} Ally`,
+        rarity: (idx.rarity >= 0 ? cols[idx.rarity] : "").trim() || "R"
+      });
+    }
+    
+    console.log("Characters loaded by category:", Object.keys(byCat));
+    Object.entries(byCat).forEach(([cat, chars]) => {
+      console.log(`${cat}: ${chars.length} characters`);
+    });
+    
+    return byCat;
+  }catch(e){
+    console.warn("CSV loading failed:", e);
+    console.log("Falling back to generated characters");
+    
+    // Fallback to generated characters
+    const byCat = {};
+    for(const cat of CATEGORIES){
+      const slug = cat.toLowerCase().replace(/\s+/g, '-');
+      byCat[cat] = [1,2,3].map(n=>({
+        category: cat,
+        image: `assets/characters/${slug}/${slug}-${n}.png`,
+        name: `${cat} Operative ${n}`,
+        rarity: ["R","SR","SSR"][n-1] || "R"
+      }));
+    }
+    return byCat;
   }
+}
 
   // ---------- Session Picks ----------
   function makeSessionCharacters(pool){
@@ -1127,5 +1173,14 @@
     STATE.seedVersion = 1;
     save();
   }
+// Additional debugging function you can call from console
+function debugCharacters() {
+  console.log("Current CHAR_POOL:", CHAR_POOL);
+  console.log("Current SESSION_CHAR:", SESSION_CHAR);
+  console.log("Categories:", CATEGORIES);
+  console.log("CSV mapping:", CSV_TO_APP_CATEGORY);
+}
 
+// Make it globally accessible for debugging
+window.debugCharacters = debugCharacters;
 })();
