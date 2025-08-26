@@ -22,14 +22,14 @@
     weights: { priority: { Low:1, Medium:2, High:3 }, estHour: 1, streak: 0.5 }
   };
   const CSV_TO_APP_CATEGORY = {
-  "Training": "Fitness",
-  "Home": "Home", 
-  "Work": "Work",
-  "Finance": "Finance",
-  "Skills": "Skills",
-  "Rose Foundation": "Rose",
-  "Unknown": "Other"
-};
+    "Training": "Fitness",
+    "Home": "Home", 
+    "Work": "Work",
+    "Finance": "Finance",
+    "Skills": "Skills",
+    "Rose Foundation": "Rose",
+    "Unknown": "Other"
+  };
 
   // ---------- State ----------
   let SESSION_CHAR = {};   // per-run random pick per category (for previews)
@@ -44,19 +44,21 @@
     try { s = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { s = {}; }
     return {
       tasks: s.tasks || [],
-      characters: s.characters || {},        // unlocked characters keyed by category
+      characters: s.characters || {},
       config: s.config || deepClone(DEFAULT_CONFIG),
       power: s.power || 0,
-      calendarCursor: s.calendarCursor || todayStr().slice(0,7), // YYYY-MM
+      calendarCursor: s.calendarCursor || todayStr().slice(0,7),
       seedVersion: s.seedVersion || 0,
       meta: s.meta || { installedAt: Date.now(), completedCount: 0 },
-      activity: s.activity || []             // persisted activity feed
+      activity: s.activity || []
     };
   }
+  
   function save() {
     localStorage.setItem(LS_KEY, JSON.stringify(STATE));
     renderHeaderPower();
   }
+  
   ACTIVITY = STATE.activity || [];
 
   // ---------- Utilities ----------
@@ -93,7 +95,7 @@
     );
     return `data:image/svg+xml;charset=utf-8,${svg}`;
   }
-  function isUnlocked(cat){ return !!STATE.characters[cat]; }
+
   function placeholderPortraitForCategory(cat){
     const color = {
       Fitness:"#23ffd9", Home:"#a26bff", Finance:"#ffe066",
@@ -126,6 +128,7 @@
 </svg>`);
     return `data:image/svg+xml;charset=utf-8,${svg}`;
   }
+
   function ensureLockedCharCSS(){
     if (document.getElementById("locked-char-style")) return;
     const style = document.createElement("style");
@@ -146,6 +149,8 @@
     `;
     document.head.appendChild(style);
   }
+
+  function isUnlocked(cat){ return !!STATE.characters[cat]; }
 
   // ---------- CSV Helpers ----------
   function parseCSV(text) {
@@ -172,165 +177,92 @@
     const header = rows.shift().map(h => h.trim());
     return { header, rows };
   }
-  function normalizeImageName(raw, categoryLower) {
-  if (!raw) return null;
-  
-  let s = String(raw).trim()
-    .replace(/^["""']+/, '')
-    .replace(/["""']+$/, '');
-  s = s.split('/').pop().split('\\').pop().trim();
-  s = s.replace(/[.\s]+$/g, '');
-  
-  if (!s) return null;
-  
-  // Add extension if missing
-  if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(s)) s += '.png';
-  
-  // Handle the specific naming patterns in your CSV
-  // Your CSV has: fitness-1.png, skill-1.png, home-1.png, etc.
-  const expectedPattern = new RegExp(`^${categoryLower}-([1-3])\\.(png|jpg|jpeg|webp|gif)$`, 'i');
-  if (expectedPattern.test(s)) {
-    return s; // Already in correct format
-  }
-  
-  // Handle "skill-" vs "skills" category mismatch
-  if (categoryLower === 'skills' && /^skill-\d+\.(png|jpg|jpeg|webp|gif)$/i.test(s)) {
-    return s; // Keep skill-N.png for Skills category
-  }
-  
-  // Extract number from filename and create proper format
-  const numMatch = s.match(/([1-3])(?!\d)/);
-  if (numMatch) {
-    return `${categoryLower}-${numMatch[1]}.png`;
-  }
-  
-  return s; // Return as-is if we can't normalize
-}
 
-  // ---------- CSV Loader (pool) ----------
-  // Replace the entire loadCharactersFromCSV function in your app.js
-// Replace the loadCharactersFromCSV function with this corrected version
-async function loadCharactersFromCSV(){
-  const path = "assets/Cyberpunk App.csv";
-  try{
-    const res = await fetch(path, {cache:"no-store"});
-    if(!res.ok) {
-      console.warn(`CSV fetch failed: ${res.status} ${res.statusText}`);
-      throw new Error("csv missing");
-    }
-    const text = await res.text();
-    console.log("CSV loaded successfully, length:", text.length);
-
-    const { header, rows } = parseCSV(text);
-    console.log("CSV parsed - headers:", header);
-    console.log("CSV parsed - rows:", rows.length);
-    
-    // Log all headers to see exactly what we have
-    header.forEach((h, i) => console.log(`Header ${i}: "${h}"`));
-    
-    const idx = {
-      cat: header.findIndex(h => h && /category/i.test(h.trim())),
-      img: header.findIndex(h => h && /image/i.test(h.trim())), 
-      name: header.findIndex(h => h && /name.*title|title.*name|name/i.test(h.trim())), // Better regex for "Name/Title"
-      rarity: header.findIndex(h => h && /rarity/i.test(h.trim()))
-    };
-    
-    console.log("Column indices:", idx);
-    console.log("Found columns:", {
-      category: header[idx.cat],
-      image: header[idx.img], 
-      name: header[idx.name],
-      rarity: header[idx.rarity]
-    });
-    
-    if (idx.cat === -1) throw new Error("Category column not found in CSV");
-    if (idx.name === -1) throw new Error("Name/Title column not found in CSV");
-
-    const byCat = {};
-    let processedCount = 0;
-    
-    for(let i = 0; i < rows.length; i++){
-      const cols = rows[i];
-      if (!cols || !cols.length) continue;
-
-      // Safely get values - handle undefined/null
-      const csvCategory = cols[idx.cat] ? cols[idx.cat].toString().trim() : "";
-      const rawName = cols[idx.name] ? cols[idx.name].toString().trim() : "";
-      const rawImg = cols[idx.img] ? cols[idx.img].toString().trim() : "";
-      const rawRarity = cols[idx.rarity] ? cols[idx.rarity].toString().trim() : "R";
-      
-      // Skip empty rows or Unknown category
-      if (!csvCategory || csvCategory === "Unknown") {
-        console.log(`Skipping row ${i}: empty or unknown category`);
-        continue; 
+  // ---------- CSV Loader ----------
+  async function loadCharactersFromCSV(){
+    const path = "assets/Cyberpunk App.csv";
+    try{
+      const res = await fetch(path, {cache:"no-store"});
+      if(!res.ok) {
+        console.warn(`CSV fetch failed: ${res.status} ${res.statusText}`);
+        throw new Error("csv missing");
       }
-      
-      // Map CSV category to app category
-      const cat = CSV_TO_APP_CATEGORY[csvCategory] || csvCategory;
-      const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
+      const text = await res.text();
+      console.log("CSV loaded successfully, length:", text.length);
 
-      console.log(`Row ${i}: "${csvCategory}" -> "${cat}" (${categoryLower})`);
-      console.log(`  Name: "${rawName}"`);
-      console.log(`  Image: "${rawImg}"`);
-      console.log(`  Rarity: "${rawRarity}"`);
+      const { header, rows } = parseCSV(text);
+      console.log("CSV parsed - headers:", header);
+      console.log("CSV parsed - rows:", rows.length);
       
-      // Create image path
-      let chosen;
-      if (rawImg) {
-        chosen = `assets/characters/${categoryLower}/${rawImg}`;
-      } else {
-        chosen = `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
-      }
-
-      const character = {
-        category: cat,
-        image: chosen,
-        name: rawName || `${cat} Ally`,
-        rarity: rawRarity || "R"
+      const idx = {
+        cat: header.findIndex(h => h && /category/i.test(h.trim())),
+        img: header.findIndex(h => h && /image/i.test(h.trim())), 
+        name: header.findIndex(h => h && /name.*title|title.*name|name/i.test(h.trim())),
+        rarity: header.findIndex(h => h && /rarity/i.test(h.trim()))
       };
       
-      console.log("✓ Created character:", character);
+      console.log("Column indices:", idx);
+      
+      if (idx.cat === -1) throw new Error("Category column not found in CSV");
+      if (idx.name === -1) throw new Error("Name/Title column not found in CSV");
 
-      if (!byCat[cat]) byCat[cat] = [];
-      byCat[cat].push(character);
-      processedCount++;
+      const byCat = {};
+      let processedCount = 0;
+      
+      for(let i = 0; i < rows.length; i++){
+        const cols = rows[i];
+        if (!cols || !cols.length) continue;
+
+        const csvCategory = cols[idx.cat] ? cols[idx.cat].toString().trim() : "";
+        const rawName = cols[idx.name] ? cols[idx.name].toString().trim() : "";
+        const rawImg = cols[idx.img] ? cols[idx.img].toString().trim() : "";
+        const rawRarity = cols[idx.rarity] ? cols[idx.rarity].toString().trim() : "R";
+        
+        if (!csvCategory || csvCategory === "Unknown") continue;
+        
+        const cat = CSV_TO_APP_CATEGORY[csvCategory] || csvCategory;
+        const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
+
+        let chosen;
+        if (rawImg) {
+          chosen = `assets/characters/${categoryLower}/${rawImg}`;
+        } else {
+          chosen = `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
+        }
+
+        const character = {
+          category: cat,
+          image: chosen,
+          name: rawName || `${cat} Ally`,
+          rarity: rawRarity || "R"
+        };
+        
+        if (!byCat[cat]) byCat[cat] = [];
+        byCat[cat].push(character);
+        processedCount++;
+      }
+      
+      console.log(`✓ Successfully processed ${processedCount} characters from CSV`);
+      return byCat;
+      
+    } catch(e) {
+      console.error("❌ CSV loading failed:", e);
+      console.log("📋 Falling back to generated characters");
+      
+      // Fallback
+      const byCat = {};
+      for(const cat of CATEGORIES){
+        const slug = cat.toLowerCase().replace(/\s+/g, '-');
+        byCat[cat] = [1,2,3].map(n=>({
+          category: cat,
+          image: `assets/characters/${slug}/${slug}-${n}.png`,
+          name: `${cat} Operative ${n}`,
+          rarity: ["R","SR","SSR"][n-1] || "R"
+        }));
+      }
+      return byCat;
     }
-    
-    console.log(`✓ Successfully processed ${processedCount} characters from CSV`);
-    console.log("Final character data by category:");
-    Object.entries(byCat).forEach(([cat, chars]) => {
-      console.log(`  ${cat}: ${chars.length} characters`);
-      chars.forEach((char, idx) => {
-        console.log(`    ${idx + 1}. "${char.name}" (${char.rarity}) - ${char.image}`);
-      });
-    });
-    
-    // Ensure we have at least some characters
-    if (Object.keys(byCat).length === 0) {
-      throw new Error("No valid characters found in CSV");
-    }
-    
-    return byCat;
-    
-  } catch(e) {
-    console.error("❌ CSV loading failed with error:", e);
-    console.error("Full error details:", e.message, e.stack);
-    console.log("📋 Falling back to generated characters");
-    
-    // Fallback to generated characters
-    const byCat = {};
-    for(const cat of CATEGORIES){
-      const slug = cat.toLowerCase().replace(/\s+/g, '-');
-      byCat[cat] = [1,2,3].map(n=>({
-        category: cat,
-        image: `assets/characters/${slug}/${slug}-${n}.png`,
-        name: `${cat} Operative ${n}`,
-        rarity: ["R","SR","SSR"][n-1] || "R"
-      }));
-    }
-    return byCat;
   }
-}
 
   // ---------- Session Picks ----------
   function makeSessionCharacters(pool){
@@ -348,7 +280,6 @@ async function loadCharactersFromCSV(){
 
   // ---------- App Init ----------
   async function init(){
-    // Populate quick-create category select
     const qCat = document.getElementById("q-category");
     if (qCat) qCat.innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join("");
 
@@ -369,6 +300,7 @@ async function loadCharactersFromCSV(){
       navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
     }
   }
+
   function renderAll(){
     renderHeaderPower();
     renderSummary();
@@ -388,6 +320,7 @@ async function loadCharactersFromCSV(){
     layer.appendChild(t);
     setTimeout(()=>{ t.remove(); }, 2300);
   }
+
   function openLightbox(html){
     const dlg = document.getElementById("lightbox");
     const cont = document.getElementById("lightbox-content");
@@ -405,7 +338,7 @@ async function loadCharactersFromCSV(){
       btn.addEventListener("click", ()=>{
         tabs.forEach(b=>b.setAttribute("aria-selected","false"));
         btn.setAttribute("aria-selected","true");
-        const id = btn.dataset.tab; // summary, create, tasks, calendar, characters, boss, config
+        const id = btn.dataset.tab;
         document.querySelectorAll("main > section").forEach(s=> s.hidden = !s.id.endsWith(id));
         const views = document.getElementById("views");
         if(views?.focus) views.focus({preventScroll:true});
@@ -432,11 +365,13 @@ async function loadCharactersFromCSV(){
     base += streak * streakLevel * 2;
     return Math.max(1, Math.round(base));
   }
+
   function addPower(xp){
     STATE.power += xp;
     save();
     renderHeaderPower();
   }
+
   function renderHeaderPower(){
     const pctEl = document.getElementById("power-perc");
     const bar = document.getElementById("powerbar-inner");
@@ -446,8 +381,7 @@ async function loadCharactersFromCSV(){
     bar.style.width = `${pct}%`;
   }
 
-  // ---------- Activity (persisted) ----------
-  // kind: "character_found" | "task_completed" | "boss_win" | "boss_loss" | "generic"
+  // ---------- Activity ----------
   function addActivity(title, xp = 0, kind = "generic"){
     const entry = { when: new Date().toISOString(), title, xp, kind };
     ACTIVITY.unshift(entry);
@@ -456,7 +390,7 @@ async function loadCharactersFromCSV(){
     save();
   }
 
-  // ---------- Summary (hide "Other"; show recent activity) ----------
+  // ---------- Summary ----------
   function renderSummary(){
     ensureLockedCharCSS();
 
@@ -464,7 +398,6 @@ async function loadCharactersFromCSV(){
     const grid = document.getElementById("summary-grid");
     if(!section || !grid) return;
 
-    // tiles (hide "Other")
     const cats = CATEGORIES.filter(c => c !== "Other");
     grid.innerHTML = cats.map(cat=>{
       const unlocked = isUnlocked(cat);
@@ -478,7 +411,6 @@ async function loadCharactersFromCSV(){
         </button>`;
     }).join("");
 
-    // tile actions
     grid.querySelectorAll(".tile").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const cat = btn.dataset.cat;
@@ -491,7 +423,7 @@ async function loadCharactersFromCSV(){
       });
     });
 
-    // little breathing room before activity section
+    // Activity section
     if (!document.getElementById("summary-activity-space")) {
       const s = document.createElement("style");
       s.id = "summary-activity-space";
@@ -502,7 +434,6 @@ async function loadCharactersFromCSV(){
       document.head.appendChild(s);
     }
 
-    // recent activity (last 3) – clean one-line layout
     let act = document.getElementById("summary-activity");
     if (!act) {
       act = document.createElement("div");
@@ -510,6 +441,7 @@ async function loadCharactersFromCSV(){
       act.className = "card";
       section.appendChild(act);
     }
+    
     const recent = (STATE.activity || []).slice(0,3);
     const iconFor = (kind)=>{
       switch(kind){
@@ -520,7 +452,7 @@ async function loadCharactersFromCSV(){
         default: return "•";
       }
     };
-    const TITLE_MAX = 48; // keep things to a single line
+    const TITLE_MAX = 48;
 
     act.innerHTML = `
       <div class="group-head">
@@ -670,7 +602,7 @@ async function loadCharactersFromCSV(){
         }
       });
 
-      // Mobile swipe affordance
+      // Mobile swipe
       let sx=0, ex=0;
       card.addEventListener("touchstart", e=>{ sx = e.changedTouches[0].screenX; }, {passive:true});
       card.addEventListener("touchend", e=>{
@@ -710,7 +642,7 @@ async function loadCharactersFromCSV(){
     const t = STATE.tasks.find(x=>x.id===id);
     if(!t || t.done) return;
     t.done = true;
-    t.completedAt = new Date().toISOString();  // <-- record completion time
+    t.completedAt = new Date().toISOString();
     STATE.meta.completedCount++;
     const xp = computeTaskXP(t);
     addPower(xp);
@@ -720,6 +652,7 @@ async function loadCharactersFromCSV(){
     save();
     renderCharacters(); renderBoss(); renderCalendar(); renderSummary();
   }
+
   function deleteTask(id){ STATE.tasks = STATE.tasks.filter(x=>x.id!==id); save(); }
 
   // ---------- Add Dialog ----------
@@ -797,6 +730,7 @@ async function loadCharactersFromCSV(){
     if(today) today.addEventListener("click", ()=>{ STATE.calendarCursor = todayStr().slice(0,7); save(); renderCalendar(); });
     if(gen) gen.addEventListener("click", ()=>{ generateRecurring(); renderCalendar(); });
   }
+
   function ensureCalendarCSS(){
     if (document.getElementById("cal-dot-style")) return;
     const css = `
@@ -818,12 +752,14 @@ async function loadCharactersFromCSV(){
     style.textContent = css;
     document.head.appendChild(style);
   }
+
   function shiftMonth(delta){
     const [y,m] = STATE.calendarCursor.split("-").map(n=>Number(n));
     const d = new Date(y, m-1 + delta, 1);
     STATE.calendarCursor = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     save(); renderCalendar();
   }
+
   function renderCalendar(){
     ensureCalendarCSS();
     const grid = document.getElementById("calendar-grid");
@@ -894,6 +830,7 @@ async function loadCharactersFromCSV(){
       });
     });
   }
+
   function generateRecurring(){
     const horizon = new Date(); horizon.setDate(horizon.getDate()+60);
     const futureIso = horizon.toISOString().slice(0,10);
@@ -939,13 +876,13 @@ async function loadCharactersFromCSV(){
       save();
     }
   }
+
   function renderCharacters(){
     ensureLockedCharCSS();
     const grid = document.getElementById("chars-grid");
     const empty = document.getElementById("chars-empty");
     if(!grid) return;
 
-    // Always show one card per category (locked or unlocked)
     const items = CATEGORIES.map(cat => {
       if (isUnlocked(cat)) {
         const ch = STATE.characters[cat];
@@ -995,6 +932,7 @@ async function loadCharactersFromCSV(){
 
     grid.innerHTML = items.join("");
     if(empty) empty.style.display = "none";
+    
     // Wire actions
     grid.querySelectorAll("[data-chat]").forEach(b=> b.addEventListener("click", ()=>{
       const cat = b.getAttribute("data-chat");
@@ -1055,7 +993,6 @@ async function loadCharactersFromCSV(){
       };
     }
 
-    // activity breakdown
     const list = document.getElementById("activity-list");
     if(list){
       const byKind = {};
@@ -1064,710 +1001,326 @@ async function loadCharactersFromCSV(){
     }
   }
 
-  // ---------- Config (plus import/export wiring) ----------
-  // Replace your existing import/export functions in app.js with these comprehensive versions
+  // ---------- Export/Import Functions ----------
+  function exportFullBackup(){
+    const fullBackup = {
+      version: "neon-tasks-full-backup/v1",
+      exportedAt: new Date().toISOString(),
+      appVersion: "0.11",
+      data: {
+        tasks: STATE.tasks || [],
+        characters: STATE.characters || {},
+        config: STATE.config || deepClone(DEFAULT_CONFIG),
+        power: STATE.power || 0,
+        calendarCursor: STATE.calendarCursor || todayStr().slice(0,7),
+        seedVersion: STATE.seedVersion || 0,
+        meta: STATE.meta || { installedAt: Date.now(), completedCount: 0 },
+        activity: STATE.activity || [],
+        exportMeta: {
+          totalTasks: STATE.tasks?.length || 0,
+          completedTasks: STATE.tasks?.filter(t => t.done)?.length || 0,
+          unlockedCharacters: Object.keys(STATE.characters || {}).length,
+          totalPower: STATE.power || 0,
+          lastActivity: STATE.activity?.[0]?.when || null
+        }
+      }
+    };
 
-// ---------- FULL BACKUP EXPORT ----------
-function exportFullBackup(){
-  // Create a complete snapshot of the current state
-  const fullBackup = {
-    version: "neon-tasks-full-backup/v1",
-    exportedAt: new Date().toISOString(),
-    appVersion: "0.11",
-    data: {
-      // Core app data
-      tasks: STATE.tasks || [],
-      characters: STATE.characters || {},
-      config: STATE.config || deepClone(DEFAULT_CONFIG),
-      power: STATE.power || 0,
-      calendarCursor: STATE.calendarCursor || todayStr().slice(0,7),
-      seedVersion: STATE.seedVersion || 0,
-      meta: STATE.meta || { installedAt: Date.now(), completedCount: 0 },
-      activity: STATE.activity || [],
+    const blob = new Blob([JSON.stringify(fullBackup, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const timestamp = new Date().toISOString().slice(0,16).replace(/[:T]/g, '-');
+    a.href = url;
+    a.download = `neontasks-backup-${timestamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    
+    const stats = fullBackup.data.exportMeta;
+    toast(`📤 <strong>Full backup exported</strong><br>
+      ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalPower} power`);
+  }
+
+  function importFullBackup(backupData){
+    try {
+      if (!backupData || typeof backupData !== 'object') {
+        throw new Error("Invalid backup format - not a valid object");
+      }
       
-      // Additional metadata for verification
-      exportMeta: {
-        totalTasks: STATE.tasks?.length || 0,
-        completedTasks: STATE.tasks?.filter(t => t.done)?.length || 0,
-        unlockedCharacters: Object.keys(STATE.characters || {}).length,
-        totalPower: STATE.power || 0,
-        lastActivity: STATE.activity?.[0]?.when || null
+      if (!backupData.version || !backupData.version.includes('neon-tasks')) {
+        throw new Error("Invalid backup format - missing or incorrect version");
       }
-    }
-  };
-
-  // Create and download the backup file
-  const blob = new Blob([JSON.stringify(fullBackup, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const timestamp = new Date().toISOString().slice(0,16).replace(/[:T]/g, '-');
-  a.href = url;
-  a.download = `neontasks-backup-${timestamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  
-  const stats = fullBackup.data.exportMeta;
-  toast(`📤 <strong>Full backup exported</strong><br>
-    ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalPower} power`);
-  
-  console.log("Full backup exported:", fullBackup);
-}
-
-// ---------- FULL BACKUP IMPORT ----------
-function importFullBackup(backupData){
-  try {
-    // Validate the backup format
-    if (!backupData || typeof backupData !== 'object') {
-      throw new Error("Invalid backup format - not a valid object");
-    }
-    
-    if (!backupData.version || !backupData.version.includes('neon-tasks')) {
-      throw new Error("Invalid backup format - missing or incorrect version");
-    }
-    
-    if (!backupData.data) {
-      throw new Error("Invalid backup format - no data section found");
-    }
-    
-    const data = backupData.data;
-    let importStats = {
-      tasks: 0,
-      characters: 0,
-      power: 0,
-      activities: 0,
-      errors: []
-    };
-    
-    console.log("Starting full backup import...");
-    console.log("Backup data:", backupData);
-    
-    // Create a new state object with imported data
-    const newState = {};
-    
-    // Import tasks
-    if (Array.isArray(data.tasks)) {
-      newState.tasks = data.tasks.map(task => ({
-        id: task.id || uid(),
-        title: task.title || "Imported Task",
-        category: CATEGORIES.includes(task.category) ? task.category : "Other",
-        priority: ["Low","Medium","High"].includes(task.priority) ? task.priority : "Medium",
-        type: task.type || "oneoff",
-        start: task.start || null,
-        end: task.end || null,
-        estimate: Number(task.estimate) || 0,
-        repeat: task.repeat || null,
-        notes: task.notes || "",
-        due: task.due || null,
-        done: Boolean(task.done),
-        createdAt: task.createdAt || new Date().toISOString(),
-        completedAt: task.completedAt || null
-      }));
-      importStats.tasks = newState.tasks.length;
-    } else {
-      newState.tasks = [];
-      importStats.errors.push("No valid tasks found in backup");
-    }
-    
-    // Import characters
-    if (data.characters && typeof data.characters === 'object') {
-      newState.characters = {};
-      for (const [category, charData] of Object.entries(data.characters)) {
-        if (CATEGORIES.includes(category) && charData) {
-          newState.characters[category] = {
-            name: charData.name || `${category} Ally`,
-            rarity: charData.rarity || "R",
-            category: category,
-            level: Math.max(1, Number(charData.level) || 1),
-            bond: Math.max(0, Math.min(100, Number(charData.bond) || 0)),
-            xp: Math.max(0, Number(charData.xp) || 0),
-            xpToNext: Math.max(100, Number(charData.xpToNext) || 100),
-            image: charData.image || defaultPortraitForCategory(category)
-          };
-          importStats.characters++;
-        }
-      }
-    } else {
-      newState.characters = {};
-      importStats.errors.push("No valid characters found in backup");
-    }
-    
-    // Import config
-    if (data.config && typeof data.config === 'object') {
-      newState.config = {
-        xpPreset: data.config.xpPreset || "Default",
-        scale: data.config.scale || "Linear",
-        bossTarget: Math.max(10, Number(data.config.bossTarget) || 300),
-        weights: {
-          priority: {
-            Low: Number(data.config.weights?.priority?.Low) || 1,
-            Medium: Number(data.config.weights?.priority?.Medium) || 2,
-            High: Number(data.config.weights?.priority?.High) || 3
-          },
-          estHour: Number(data.config.weights?.estHour) || 1,
-          streak: Number(data.config.weights?.streak) || 0.5
-        }
-      };
-    } else {
-      newState.config = deepClone(DEFAULT_CONFIG);
-      importStats.errors.push("No valid config found, using defaults");
-    }
-    
-    // Import power
-    newState.power = Math.max(0, Number(data.power) || 0);
-    importStats.power = newState.power;
-    
-    // Import calendar cursor
-    newState.calendarCursor = data.calendarCursor || todayStr().slice(0,7);
-    
-    // Import seed version
-    newState.seedVersion = Number(data.seedVersion) || 0;
-    
-    // Import meta
-    if (data.meta && typeof data.meta === 'object') {
-      newState.meta = {
-        installedAt: data.meta.installedAt || Date.now(),
-        completedCount: Math.max(0, Number(data.meta.completedCount) || 0)
-      };
-    } else {
-      newState.meta = { installedAt: Date.now(), completedCount: 0 };
-      importStats.errors.push("No valid meta found, using defaults");
-    }
-    
-    // Import activity
-    if (Array.isArray(data.activity)) {
-      newState.activity = data.activity.map(act => ({
-        when: act.when || new Date().toISOString(),
-        title: act.title || "Imported Activity",
-        xp: Number(act.xp) || 0,
-        kind: act.kind || "generic"
-      })).slice(0, 100); // Keep only last 100 activities
-      importStats.activities = newState.activity.length;
-    } else {
-      newState.activity = [];
-      importStats.errors.push("No valid activity found");
-    }
-    
-    // Apply the new state
-    Object.assign(STATE, newState);
-    ACTIVITY = STATE.activity;
-    
-    // Save to localStorage
-    save();
-    
-    // Re-render everything
-    renderAll();
-    
-    // Show success toast
-    const errorText = importStats.errors.length > 0 ? 
-      ` (${importStats.errors.length} warnings)` : "";
-    
-    toast(`📥 <strong>Full backup imported${errorText}</strong><br>
-      ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.power} power`);
-    
-    console.log("Import completed successfully:", importStats);
-    
-    // Log any errors/warnings
-    if (importStats.errors.length > 0) {
-      console.warn("Import warnings:", importStats.errors);
-    }
-    
-    return importStats;
-    
-  } catch (error) {
-    console.error("Full backup import failed:", error);
-    toast(`<span class="danger">Import failed: ${error.message}</span>`);
-    throw error;
-  }
-}
-
-// ---------- LEGACY IMPORT (for completed tasks only) ----------
-function importCompletedTasksFromJSON(payload){
-  // Keep this for backward compatibility with old exports
-  const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-  let added = 0;
-
-  const has = new Set(
-    STATE.tasks.filter(t=>t.done).map(t => `${t.title}__${t.completedAt || t.createdAt || ""}`)
-  );
-
-  for(const r of items){
-    const title = String(r.title || "").trim();
-    if(!title) continue;
-    const completedAt = r.completedAt || r.completed_at || null;
-    const key = `${title}__${completedAt || ""}`;
-    if(has.has(key)) continue;
-
-    const t = {
-      id: uid(),
-      title,
-      category: CATEGORIES.includes(r.category) ? r.category : "Other",
-      priority: ["Low","Medium","High"].includes(r.priority) ? r.priority : "Low",
-      type: r.type || "oneoff",
-      estimate: Number(r.estimate || 0),
-      notes: String(r.notes || ""),
-      start: null,
-      end: null,
-      repeat: null,
-      due: r.due || null,
-      done: true,
-      createdAt: r.createdAt || completedAt || new Date().toISOString(),
-      completedAt: completedAt || new Date().toISOString()
-    };
-    STATE.tasks.push(t);
-    has.add(key);
-    added++;
-  }
-  save();
-  return added;
-}
-
-// ---------- UPDATED CONFIG SETUP ----------
-// ========== STEP 1: REPLACE the exportCompletedTasksJSON function ==========
-// Find the existing exportCompletedTasksJSON function and replace it with this:
-
-function exportFullBackup(){
-  // Create a complete snapshot of the current state
-  const fullBackup = {
-    version: "neon-tasks-full-backup/v1",
-    exportedAt: new Date().toISOString(),
-    appVersion: "0.11",
-    data: {
-      // Core app data
-      tasks: STATE.tasks || [],
-      characters: STATE.characters || {},
-      config: STATE.config || deepClone(DEFAULT_CONFIG),
-      power: STATE.power || 0,
-      calendarCursor: STATE.calendarCursor || todayStr().slice(0,7),
-      seedVersion: STATE.seedVersion || 0,
-      meta: STATE.meta || { installedAt: Date.now(), completedCount: 0 },
-      activity: STATE.activity || [],
       
-      // Additional metadata for verification
-      exportMeta: {
-        totalTasks: STATE.tasks?.length || 0,
-        completedTasks: STATE.tasks?.filter(t => t.done)?.length || 0,
-        unlockedCharacters: Object.keys(STATE.characters || {}).length,
-        totalPower: STATE.power || 0,
-        lastActivity: STATE.activity?.[0]?.when || null
+      if (!backupData.data) {
+        throw new Error("Invalid backup format - no data section found");
       }
-    }
-  };
-
-  // Create and download the backup file
-  const blob = new Blob([JSON.stringify(fullBackup, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const timestamp = new Date().toISOString().slice(0,16).replace(/[:T]/g, '-');
-  a.href = url;
-  a.download = `neontasks-backup-${timestamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  
-  const stats = fullBackup.data.exportMeta;
-  toast(`📤 <strong>Full backup exported</strong><br>
-    ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalPower} power`);
-  
-  console.log("Full backup exported:", fullBackup);
-}
-
-// ========== STEP 2: REPLACE the importCompletedTasksFromJSON function ==========
-// Find the existing importCompletedTasksFromJSON function and replace it with this:
-
-function importFullBackup(backupData){
-  try {
-    // Validate the backup format
-    if (!backupData || typeof backupData !== 'object') {
-      throw new Error("Invalid backup format - not a valid object");
-    }
-    
-    if (!backupData.version || !backupData.version.includes('neon-tasks')) {
-      throw new Error("Invalid backup format - missing or incorrect version");
-    }
-    
-    if (!backupData.data) {
-      throw new Error("Invalid backup format - no data section found");
-    }
-    
-    const data = backupData.data;
-    let importStats = {
-      tasks: 0,
-      characters: 0,
-      power: 0,
-      activities: 0,
-      errors: []
-    };
-    
-    console.log("Starting full backup import...");
-    console.log("Backup data:", backupData);
-    
-    // Import tasks
-    if (Array.isArray(data.tasks)) {
-      STATE.tasks = data.tasks.map(task => ({
-        id: task.id || uid(),
-        title: task.title || "Imported Task",
-        category: CATEGORIES.includes(task.category) ? task.category : "Other",
-        priority: ["Low","Medium","High"].includes(task.priority) ? task.priority : "Medium",
-        type: task.type || "oneoff",
-        start: task.start || null,
-        end: task.end || null,
-        estimate: Number(task.estimate) || 0,
-        repeat: task.repeat || null,
-        notes: task.notes || "",
-        due: task.due || null,
-        done: Boolean(task.done),
-        createdAt: task.createdAt || new Date().toISOString(),
-        completedAt: task.completedAt || null
-      }));
-      importStats.tasks = STATE.tasks.length;
-    } else {
-      STATE.tasks = [];
-      importStats.errors.push("No valid tasks found in backup");
-    }
-    
-    // Import characters
-    if (data.characters && typeof data.characters === 'object') {
-      STATE.characters = {};
-      for (const [category, charData] of Object.entries(data.characters)) {
-        if (CATEGORIES.includes(category) && charData) {
-          STATE.characters[category] = {
-            name: charData.name || `${category} Ally`,
-            rarity: charData.rarity || "R",
-            category: category,
-            level: Math.max(1, Number(charData.level) || 1),
-            bond: Math.max(0, Math.min(100, Number(charData.bond) || 0)),
-            xp: Math.max(0, Number(charData.xp) || 0),
-            xpToNext: Math.max(100, Number(charData.xpToNext) || 100),
-            image: charData.image || defaultPortraitForCategory(category)
-          };
-          importStats.characters++;
+      
+      const data = backupData.data;
+      let importStats = { tasks: 0, characters: 0, power: 0, activities: 0, errors: [] };
+      
+      // Import tasks
+      if (Array.isArray(data.tasks)) {
+        STATE.tasks = data.tasks.map(task => ({
+          id: task.id || uid(),
+          title: task.title || "Imported Task",
+          category: CATEGORIES.includes(task.category) ? task.category : "Other",
+          priority: ["Low","Medium","High"].includes(task.priority) ? task.priority : "Medium",
+          type: task.type || "oneoff",
+          start: task.start || null,
+          end: task.end || null,
+          estimate: Number(task.estimate) || 0,
+          repeat: task.repeat || null,
+          notes: task.notes || "",
+          due: task.due || null,
+          done: Boolean(task.done),
+          createdAt: task.createdAt || new Date().toISOString(),
+          completedAt: task.completedAt || null
+        }));
+        importStats.tasks = STATE.tasks.length;
+      } else {
+        STATE.tasks = [];
+        importStats.errors.push("No valid tasks found in backup");
+      }
+      
+      // Import characters
+      if (data.characters && typeof data.characters === 'object') {
+        STATE.characters = {};
+        for (const [category, charData] of Object.entries(data.characters)) {
+          if (CATEGORIES.includes(category) && charData) {
+            STATE.characters[category] = {
+              name: charData.name || `${category} Ally`,
+              rarity: charData.rarity || "R",
+              category: category,
+              level: Math.max(1, Number(charData.level) || 1),
+              bond: Math.max(0, Math.min(100, Number(charData.bond) || 0)),
+              xp: Math.max(0, Number(charData.xp) || 0),
+              xpToNext: Math.max(100, Number(charData.xpToNext) || 100),
+              image: charData.image || defaultPortraitForCategory(category)
+            };
+            importStats.characters++;
+          }
         }
+      } else {
+        STATE.characters = {};
+        importStats.errors.push("No valid characters found in backup");
       }
-    } else {
-      STATE.characters = {};
-      importStats.errors.push("No valid characters found in backup");
-    }
-    
-    // Import config
-    if (data.config && typeof data.config === 'object') {
-      STATE.config = {
-        xpPreset: data.config.xpPreset || "Default",
-        scale: data.config.scale || "Linear",
-        bossTarget: Math.max(10, Number(data.config.bossTarget) || 300),
-        weights: {
-          priority: {
-            Low: Number(data.config.weights?.priority?.Low) || 1,
-            Medium: Number(data.config.weights?.priority?.Medium) || 2,
-            High: Number(data.config.weights?.priority?.High) || 3
-          },
-          estHour: Number(data.config.weights?.estHour) || 1,
-          streak: Number(data.config.weights?.streak) || 0.5
-        }
-      };
-    } else {
-      STATE.config = deepClone(DEFAULT_CONFIG);
-      importStats.errors.push("No valid config found, using defaults");
-    }
-    
-    // Import power
-    STATE.power = Math.max(0, Number(data.power) || 0);
-    importStats.power = STATE.power;
-    
-    // Import calendar cursor
-    STATE.calendarCursor = data.calendarCursor || todayStr().slice(0,7);
-    
-    // Import seed version
-    STATE.seedVersion = Number(data.seedVersion) || 0;
-    
-    // Import meta
-    if (data.meta && typeof data.meta === 'object') {
-      STATE.meta = {
-        installedAt: data.meta.installedAt || Date.now(),
-        completedCount: Math.max(0, Number(data.meta.completedCount) || 0)
-      };
-    } else {
-      STATE.meta = { installedAt: Date.now(), completedCount: 0 };
-      importStats.errors.push("No valid meta found, using defaults");
-    }
-    
-    // Import activity
-    if (Array.isArray(data.activity)) {
-      STATE.activity = data.activity.map(act => ({
-        when: act.when || new Date().toISOString(),
-        title: act.title || "Imported Activity",
-        xp: Number(act.xp) || 0,
-        kind: act.kind || "generic"
-      })).slice(0, 100); // Keep only last 100 activities
-      ACTIVITY = STATE.activity; // Update global ACTIVITY reference
-      importStats.activities = STATE.activity.length;
-    } else {
-      STATE.activity = [];
-      ACTIVITY = [];
-      importStats.errors.push("No valid activity found");
-    }
-    
-    // Save to localStorage
-    save();
-    
-    // Re-render everything
-    renderAll();
-    
-    // Show success toast
-    const errorText = importStats.errors.length > 0 ? 
-      ` (${importStats.errors.length} warnings)` : "";
-    
-    toast(`📥 <strong>Full backup imported${errorText}</strong><br>
-      ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.power} power`);
-    
-    console.log("Import completed successfully:", importStats);
-    
-    // Log any errors/warnings
-    if (importStats.errors.length > 0) {
-      console.warn("Import warnings:", importStats.errors);
-    }
-    
-    return importStats;
-    
-  } catch (error) {
-    console.error("Full backup import failed:", error);
-    toast(`<span class="danger">Import failed: ${error.message}</span>`);
-    throw error;
-  }
-}
-
-// ========== STEP 3: ADD this new function (legacy support) ==========
-// Add this function right after the importFullBackup function:
-
-function importCompletedTasksFromJSON(payload){
-  // Keep this for backward compatibility with old exports
-  const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-  let added = 0;
-
-  const has = new Set(
-    STATE.tasks.filter(t=>t.done).map(t => `${t.title}__${t.completedAt || t.createdAt || ""}`)
-  );
-
-  for(const r of items){
-    const title = String(r.title || "").trim();
-    if(!title) continue;
-    const completedAt = r.completedAt || r.completed_at || null;
-    const key = `${title}__${completedAt || ""}`;
-    if(has.has(key)) continue;
-
-    const t = {
-      id: uid(),
-      title,
-      category: CATEGORIES.includes(r.category) ? r.category : "Other",
-      priority: ["Low","Medium","High"].includes(r.priority) ? r.priority : "Low",
-      type: r.type || "oneoff",
-      estimate: Number(r.estimate || 0),
-      notes: String(r.notes || ""),
-      start: null,
-      end: null,
-      repeat: null,
-      due: r.due || null,
-      done: true,
-      createdAt: r.createdAt || completedAt || new Date().toISOString(),
-      completedAt: completedAt || new Date().toISOString()
-    };
-    STATE.tasks.push(t);
-    has.add(key);
-    added++;
-  }
-  save();
-  return added;
-}
-
-// ========== STEP 4: REPLACE your entire setupConfig function ==========
-// Find your setupConfig function and replace it completely with this:
-
-function setupConfig(){
-  const preset = document.getElementById("xp-preset");
-  const scale = document.getElementById("xp-scale");
-  const target = document.getElementById("boss-target-input");
-  const apply = document.getElementById("apply-target");
-  
-  if(preset){ 
-    preset.value = STATE.config.xpPreset; 
-    preset.addEventListener("change", ()=>{
-      STATE.config.xpPreset = preset.value;
-      if(preset.value === "Aggressive"){
-        STATE.config.weights.priority = { Low:1, Medium:3, High:5 };
-        STATE.config.weights.estHour = 2;
-      }else if(preset.value === "Gentle"){
-        STATE.config.weights.priority = { Low:1, Medium:2, High:2 };
-        STATE.config.weights.estHour = 0.5;
-      }else{
-        STATE.config.weights.priority = deepClone(DEFAULT_CONFIG.weights.priority);
-        STATE.config.weights.estHour = 1;
+      
+      // Import other data
+      if (data.config && typeof data.config === 'object') {
+        STATE.config = {
+          xpPreset: data.config.xpPreset || "Default",
+          scale: data.config.scale || "Linear",
+          bossTarget: Math.max(10, Number(data.config.bossTarget) || 300),
+          weights: {
+            priority: {
+              Low: Number(data.config.weights?.priority?.Low) || 1,
+              Medium: Number(data.config.weights?.priority?.Medium) || 2,
+              High: Number(data.config.weights?.priority?.High) || 3
+            },
+            estHour: Number(data.config.weights?.estHour) || 1,
+            streak: Number(data.config.weights?.streak) || 0.5
+          }
+        };
+      } else {
+        STATE.config = deepClone(DEFAULT_CONFIG);
+        importStats.errors.push("No valid config found, using defaults");
       }
+      
+      STATE.power = Math.max(0, Number(data.power) || 0);
+      importStats.power = STATE.power;
+      
+      STATE.calendarCursor = data.calendarCursor || todayStr().slice(0,7);
+      STATE.seedVersion = Number(data.seedVersion) || 0;
+      
+      if (data.meta && typeof data.meta === 'object') {
+        STATE.meta = {
+          installedAt: data.meta.installedAt || Date.now(),
+          completedCount: Math.max(0, Number(data.meta.completedCount) || 0)
+        };
+      } else {
+        STATE.meta = { installedAt: Date.now(), completedCount: 0 };
+        importStats.errors.push("No valid meta found, using defaults");
+      }
+      
+      if (Array.isArray(data.activity)) {
+        STATE.activity = data.activity.map(act => ({
+          when: act.when || new Date().toISOString(),
+          title: act.title || "Imported Activity",
+          xp: Number(act.xp) || 0,
+          kind: act.kind || "generic"
+        })).slice(0, 100);
+        ACTIVITY = STATE.activity;
+        importStats.activities = STATE.activity.length;
+      } else {
+        STATE.activity = [];
+        ACTIVITY = [];
+        importStats.errors.push("No valid activity found");
+      }
+      
       save();
-    });
-  }
-  
-  if(scale){ 
-    scale.value = STATE.config.scale; 
-    scale.addEventListener("change", ()=>{ STATE.config.scale = scale.value; save(); }); 
-  }
-  
-  if(target){ target.value = STATE.config.bossTarget; }
-  
-  if(apply){ 
-    apply.addEventListener("click", ()=>{ 
-      const v = Number(target.value||0); 
-      if(v>=10){ 
-        STATE.config.bossTarget = v; 
-        save(); 
-        renderHeaderPower(); 
-        renderBoss(); 
-        toast("Applied boss target"); 
-      } 
-    }); 
+      renderAll();
+      
+      const errorText = importStats.errors.length > 0 ? ` (${importStats.errors.length} warnings)` : "";
+      toast(`📥 <strong>Full backup imported${errorText}</strong><br>
+        ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.power} power`);
+      
+      return importStats;
+      
+    } catch (error) {
+      console.error("Full backup import failed:", error);
+      toast(`<span class="danger">Import failed: ${error.message}</span>`);
+      throw error;
+    }
   }
 
-  // Updated Import/Export buttons - FULL BACKUP
-  const exportBtn = document.getElementById("export-completed");
-  const importBtn = document.getElementById("import-completed");
-  const importFile = document.getElementById("import-completed-file");
-  
-  if(exportBtn) {
-    // Update button text and function
-    exportBtn.textContent = "Export Full Backup";
-    exportBtn.addEventListener("click", exportFullBackup);
-  }
-  
-  if(importBtn && importFile){
-    // Update button text
-    importBtn.textContent = "Import Full Backup";
-    
-    importBtn.addEventListener("click", ()=> importFile.click());
-    importFile.addEventListener("change", async ()=>{
-      const file = importFile.files?.[0];
-      if(!file) return;
-      
-      // Show confirmation dialog for full import
-      const confirmed = confirm(
-        "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
-        "This will COMPLETELY REPLACE all your current data including:\n" +
-        "• All tasks (completed and pending)\n" +
-        "• All unlocked characters and their levels\n" +
-        "• All power and XP\n" +
-        "• All settings and configuration\n" +
-        "• All activity history\n\n" +
-        "Are you sure you want to proceed?\n\n" +
-        "(Consider exporting your current data first as a backup)"
-      );
-      
-      if (!confirmed) {
-        importFile.value = "";
-        return;
-      }
-      
-      try{
-        const text = await file.text();
-        const parsed = JSON.parse(text);
-        
-        // Check if it's a full backup or legacy format
-        if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
-          // Full backup import
-          const stats = importFullBackup(parsed);
-          toast(`📥 <strong>Full backup imported successfully!</strong>`);
-        } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
-          // Legacy completed tasks import
-          const added = importCompletedTasksFromJSON(parsed);
-          toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
-          renderAll();
-        } else if (Array.isArray(parsed)) {
-          // Raw array of tasks
-          const added = importCompletedTasksFromJSON(parsed);
-          toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
-          renderAll();
-        } else {
-          throw new Error("Unrecognized backup format");
-        }
-        
-      }catch(e){
-        console.error("Import error:", e);
-        toast(`<span class="danger">Import failed: ${e.message}</span>`);
-      }finally{
-        importFile.value = "";
-      }
-    });
-  }
-}
+  function importCompletedTasksFromJSON(payload){
+    const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+    let added = 0;
 
-  // Updated Import/Export buttons - FULL BACKUP
-  const exportBtn = document.getElementById("export-completed");
-  const importBtn = document.getElementById("import-completed");
-  const importFile = document.getElementById("import-completed-file");
-  
-  if(exportBtn) {
-    // Update button text and function
-    exportBtn.textContent = "Export Full Backup";
-    exportBtn.addEventListener("click", exportFullBackup);
+    const has = new Set(
+      STATE.tasks.filter(t=>t.done).map(t => `${t.title}__${t.completedAt || t.createdAt || ""}`)
+    );
+
+    for(const r of items){
+      const title = String(r.title || "").trim();
+      if(!title) continue;
+      const completedAt = r.completedAt || r.completed_at || null;
+      const key = `${title}__${completedAt || ""}`;
+      if(has.has(key)) continue;
+
+      const t = {
+        id: uid(),
+        title,
+        category: CATEGORIES.includes(r.category) ? r.category : "Other",
+        priority: ["Low","Medium","High"].includes(r.priority) ? r.priority : "Low",
+        type: r.type || "oneoff",
+        estimate: Number(r.estimate || 0),
+        notes: String(r.notes || ""),
+        start: null,
+        end: null,
+        repeat: null,
+        due: r.due || null,
+        done: true,
+        createdAt: r.createdAt || completedAt || new Date().toISOString(),
+        completedAt: completedAt || new Date().toISOString()
+      };
+      STATE.tasks.push(t);
+      has.add(key);
+      added++;
+    }
+    save();
+    return added;
   }
-  
-  if(importBtn && importFile){
-    // Update button text
-    importBtn.textContent = "Import Full Backup";
+
+  // ---------- Config ----------
+  function setupConfig(){
+    const preset = document.getElementById("xp-preset");
+    const scale = document.getElementById("xp-scale");
+    const target = document.getElementById("boss-target-input");
+    const apply = document.getElementById("apply-target");
     
-    importBtn.addEventListener("click", ()=> importFile.click());
-    importFile.addEventListener("change", async ()=>{
-      const file = importFile.files?.[0];
-      if(!file) return;
+    if(preset){ 
+      preset.value = STATE.config.xpPreset; 
+      preset.addEventListener("change", ()=>{
+        STATE.config.xpPreset = preset.value;
+        if(preset.value === "Aggressive"){
+          STATE.config.weights.priority = { Low:1, Medium:3, High:5 };
+          STATE.config.weights.estHour = 2;
+        }else if(preset.value === "Gentle"){
+          STATE.config.weights.priority = { Low:1, Medium:2, High:2 };
+          STATE.config.weights.estHour = 0.5;
+        }else{
+          STATE.config.weights.priority = deepClone(DEFAULT_CONFIG.weights.priority);
+          STATE.config.weights.estHour = 1;
+        }
+        save();
+      });
+    }
+    
+    if(scale){ 
+      scale.value = STATE.config.scale; 
+      scale.addEventListener("change", ()=>{ STATE.config.scale = scale.value; save(); }); 
+    }
+    
+    if(target){ target.value = STATE.config.bossTarget; }
+    
+    if(apply){ 
+      apply.addEventListener("click", ()=>{ 
+        const v = Number(target.value||0); 
+        if(v>=10){ 
+          STATE.config.bossTarget = v; 
+          save(); 
+          renderHeaderPower(); 
+          renderBoss(); 
+          toast("Applied boss target"); 
+        } 
+      }); 
+    }
+
+    // Import/Export buttons
+    const exportBtn = document.getElementById("export-completed");
+    const importBtn = document.getElementById("import-completed");
+    const importFile = document.getElementById("import-completed-file");
+    
+    if(exportBtn) {
+      exportBtn.textContent = "Export Full Backup";
+      exportBtn.addEventListener("click", exportFullBackup);
+    }
+    
+    if(importBtn && importFile){
+      importBtn.textContent = "Import Full Backup";
       
-      // Show confirmation dialog for full import
-      const confirmed = confirm(
-        "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
-        "This will COMPLETELY REPLACE all your current data including:\n" +
-        "• All tasks (completed and pending)\n" +
-        "• All unlocked characters and their levels\n" +
-        "• All power and XP\n" +
-        "• All settings and configuration\n" +
-        "• All activity history\n\n" +
-        "Are you sure you want to proceed?\n\n" +
-        "(Consider exporting your current data first as a backup)"
-      );
-      
-      if (!confirmed) {
-        importFile.value = "";
-        return;
-      }
-      
-      try{
-        const text = await file.text();
-        const parsed = JSON.parse(text);
+      importBtn.addEventListener("click", ()=> importFile.click());
+      importFile.addEventListener("change", async ()=>{
+        const file = importFile.files?.[0];
+        if(!file) return;
         
-        // Check if it's a full backup or legacy format
-        if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
-          // Full backup import
-          const stats = importFullBackup(parsed);
-          toast(`📥 <strong>Full backup imported successfully!</strong>`);
-        } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
-          // Legacy completed tasks import
-          const added = importCompletedTasksFromJSON(parsed);
-          toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
-        } else if (Array.isArray(parsed)) {
-          // Raw array of tasks
-          const added = importCompletedTasksFromJSON(parsed);
-          toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
-        } else {
-          throw new Error("Unrecognized backup format");
+        const confirmed = confirm(
+          "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
+          "This will COMPLETELY REPLACE all your current data including:\n" +
+          "• All tasks (completed and pending)\n" +
+          "• All unlocked characters and their levels\n" +
+          "• All power and XP\n" +
+          "• All settings and configuration\n" +
+          "• All activity history\n\n" +
+          "Are you sure you want to proceed?\n\n" +
+          "(Consider exporting your current data first as a backup)"
+        );
+        
+        if (!confirmed) {
+          importFile.value = "";
+          return;
         }
         
-        renderAll();
-      }catch(e){
-        console.error("Import error:", e);
-        toast(`<span class="danger">Import failed: ${e.message}</span>`);
-      }finally{
-        importFile.value = "";
-      }
-    });
+        try{
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          
+          if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
+            importFullBackup(parsed);
+          } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
+            const added = importCompletedTasksFromJSON(parsed);
+            toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
+            renderAll();
+          } else if (Array.isArray(parsed)) {
+            const added = importCompletedTasksFromJSON(parsed);
+            toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
+            renderAll();
+          } else {
+            throw new Error("Unrecognized backup format");
+          }
+          
+        }catch(e){
+          console.error("Import error:", e);
+          toast(`<span class="danger">Import failed: ${e.message}</span>`);
+        }finally{
+          importFile.value = "";
+        }
+      });
+    }
   }
-}
+
   // ---------- Reset / Seed ----------
   function setupReset(){
     const dlg = document.getElementById("confirm-reset");
@@ -1780,6 +1333,7 @@ function setupConfig(){
     if(yes){ yes.addEventListener("click", ()=>{ localStorage.removeItem(LS_KEY); location.reload(); }); }
     if(seed){ seed.addEventListener("click", ()=>{ seedDemo(); toast("Seeded demo data"); renderAll(); }); }
   }
+
   function seedDemo(){
     if(STATE.seedVersion >= 1) return;
     const now = new Date();
@@ -1798,22 +1352,15 @@ function setupConfig(){
     STATE.seedVersion = 1;
     save();
   }
-// Additional debugging function you can call from console
-function debugCharacters() {
-  console.log("Current CHAR_POOL:", CHAR_POOL);
-  console.log("Current SESSION_CHAR:", SESSION_CHAR);
-  console.log("Categories:", CATEGORIES);
-  console.log("CSV mapping:", CSV_TO_APP_CATEGORY);
-}
 
-// Make it globally accessible for debugging
-window.debugCharacters = debugCharacters;
+  // Debug function
+  function debugCharacters() {
+    console.log("Current CHAR_POOL:", CHAR_POOL);
+    console.log("Current SESSION_CHAR:", SESSION_CHAR);
+    console.log("Categories:", CATEGORIES);
+    console.log("CSV mapping:", CSV_TO_APP_CATEGORY);
+  }
 
-   // Debug override - add this temporarily
-window.debugCharacters = function() {
-  console.log("CHAR_POOL:", CHAR_POOL);
-  console.log("SESSION_CHAR:", SESSION_CHAR);
-  console.log("State characters:", STATE.characters);
-};
+  window.debugCharacters = debugCharacters;
    
 })();
