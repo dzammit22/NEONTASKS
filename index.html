@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NEON/TASKS</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="logo">NEON/<span>TASKS</span> <small>v0.4</small></div>
+
+    <div class="powerbar" aria-label="Power">
+      <div class="powerbar-label">
+        <span>Power</span>
+        <span id="power-perc">0%</span>
+      </div>
+      <div class="powerbar-outer">
+        <div id="powerbar-inner"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" data-tab="summary" aria-selected="true" role="tab">Summary</button>
+    <button class="tab" data-tab="create"  aria-selected="false" role="tab">Create</button>
+    <button class="tab" data-tab="tasks"   aria-selected="false" role="tab">Tasks</button>
+    <button class="tab" data-tab="calendar" aria-selected="false" role="tab">Calendar</button>
+    <button class="tab" data-tab="characters" aria-selected="false" role="tab">Characters</button>
+    <button class="tab" data-tab="boss"    aria-selected="false" role="tab">Boss</button>
+    <button class="tab" data-tab="config"  aria-selected="false" role="tab">Config</button>
+  </nav>
+
+  <!-- Main Views -->
+  <main id="views" tabindex="-1">
+    <!-- SUMMARY -->
+    <section id="view-summary" class="view">
+      <div id="summary-grid" class="summary-grid"></div>
+      <!-- Recent activity card will be injected after the grid -->
+    </section>
+
+    <!-- CREATE (Quick Add) -->
+    <section id="view-create" class="view" hidden>
+      <div class="card">
+        <h3>Add Task (quick)</h3>
+        <form id="quick-form" class="form">
+          <div class="field">
+            <label for="q-title">Title <span class="req">*</span></label>
+            <input id="q-title" name="title" placeholder="Task title" required />
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="q-priority">Priority</label>
+              <select id="q-priority" name="priority">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="q-due">Due</label>
+              <input id="q-due" type="date" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="q-category">Category</label>
+              <select id="q-category"></select>
+            </div>
+            <div class="field">
+              <label for="q-notes">Notes</label>
+              <input id="q-notes" placeholder="Optional notes" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" type="submit">Add</button>
+            <button class="btn" type="reset">Clear</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section id="view-tasks" class="view" hidden>
+      <div class="card toolbar">
+        <input id="task-search" placeholder="Search tasks…" aria-label="Search tasks" />
+        <div class="chips">
+          <button class="chip" data-scope="today" aria-pressed="true">Today</button>
+          <button class="chip" data-scope="week" aria-pressed="false">Week</button>
+          <button class="chip" data-scope="all" aria-pressed="false">All</button>
+        </div>
+        <div class="row">
+          <div>
+            <label class="sr-only" for="task-sort">Sort</label>
+            <select id="task-sort">
+              <option value="priority" selected>Sort: Priority</option>
+              <option value="due">Sort: Due date</option>
+              <option value="created">Sort: Created</option>
+            </select>
+          </div>
+          <div id="task-categories" class="category-pills"></div>
+        </div>
+        <div class="stats">
+          <div id="stat-done">Done: 0</div>
+          <div id="stat-today">Due Today: 0</div>
+          <div id="stat-total">Total: 0</div>
+        </div>
+      </div>
+
+      <div id="task-groups" class="task-groups"></div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section id="view-calendar" class="view" hidden>
+      <div class="card calendar-header">
+        <h3 id="cal-title">Month YYYY</h3>
+        <div class="cal-controls">
+          <button id="cal-prev" class="btn">◀</button>
+          <button id="cal-today" class="btn">Today</button>
+          <button id="cal-next" class="btn">▶</button>
+          <button id="cal-generate" class="btn">Generate recurring</button>
+        </div>
+      </div>
+      <div id="calendar-grid" class="calendar-grid"></div>
+    </section>
+
+    <!-- CHARACTERS -->
+    <section id="view-characters" class="view" hidden>
+      <div id="chars-empty" class="card empty">No characters yet — complete tasks to unlock allies.</div>
+      <div id="chars-grid" class="chars-grid"></div>
+    </section>
+
+    <!-- BOSS -->
+    <section id="view-boss" class="view" hidden>
+      <div class="card boss-card">
+        <div class="boss-head">
+          <h3>Monthly Boss</h3>
+          <span id="boss-meta" class="muted">Power 0 / 300</span>
+        </div>
+
+        <div class="powerbar" aria-label="Party charge">
+          <div class="powerbar-label">
+            <span>Party</span><span id="party-perc">0%</span>
+          </div>
+          <div class="powerbar-outer"><div id="party-inner"></div></div>
+        </div>
+
+        <div class="boss-stats">
+          <div>Target: <strong id="boss-target">300</strong></div>
+          <div>Win chance: <strong id="boss-chance">0%</strong></div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-simulate" class="btn primary">Fight!</button>
+        </div>
+
+        <div id="boss-result" class="boss-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Activity breakdown</h3>
+        <div id="activity-list"></div>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="view-config" class="view" hidden>
+      <div class="card">
+        <h3>XP settings</h3>
+        <div class="row">
+          <div class="field">
+            <label for="xp-preset">Preset</label>
+            <select id="xp-preset">
+              <option>Default</option>
+              <option>Aggressive</option>
+              <option>Gentle</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="xp-scale">Scale</label>
+            <select id="xp-scale">
+              <option>Linear</option>
+              <option>Square root</option>
+              <option>Log</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Boss target</h3>
+        <div class="row">
+          <div class="field">
+            <label for="boss-target-input">Target XP</label>
+            <input id="boss-target-input" type="number" min="10" step="10" />
+          </div>
+          <div class="actions">
+            <button id="apply-target" class="btn primary">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Data controls</h3>
+        <div class="row">
+          <button id="seed-demo" class="btn">Seed demo data</button>
+
+          <button id="export-completed" class="btn">Export completed (JSON)</button>
+
+          <button id="import-completed" class="btn">Import completed</button>
+          <input id="import-completed-file" type="file" accept="application/json,.json" style="display:none" />
+
+          <button id="reset-all" class="btn danger">Reset all</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Add Button -->
+  <button id="fab-add" class="fab" aria-label="Add task">+</button>
+
+  <!-- Add Task Dialog -->
+  <dialog id="add-dialog" aria-labelledby="add-title">
+    <form id="add-form" method="dialog">
+      <h3 id="add-title">Add Task</h3>
+
+      <div class="field">
+        <label for="a-title">Title <span class="req">*</span></label>
+        <input id="a-title" required placeholder="Task title" />
+      </div>
+
+      <div class="field">
+        <label>Category</label>
+        <div id="a-category-pills" class="pill-select"></div>
+      </div>
+
+      <!-- Portrait preview (you hid via CSS, kept for compatibility) -->
+      <div id="a-character-preview" class="char-preview"></div>
+
+      <div class="row">
+        <div class="field">
+          <label for="a-priority">Priority</label>
+          <select id="a-priority">
+            <option>Low</option>
+            <option selected>Medium</option>
+            <option>High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="a-type">Type</label>
+          <select id="a-type">
+            <option value="oneoff" selected>One-off</option>
+            <option value="repeat">Repeat</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="a-start">Start</label>
+          <input id="a-start" type="date" />
+        </div>
+        <div class="field">
+          <label for="a-end">End</label>
+          <input id="a-end" type="date" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="a-est">Estimated hours</label>
+          <input id="a-est" type="number" min="0" step="0.5" value="1" />
+        </div>
+        <div class="field">
+          <label for="a-repeat">Repeat (days)</label>
+          <input id="a-repeat" type="number" min="1" step="1" value="7" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="a-notes">Notes</label>
+        <textarea id="a-notes" rows="3" placeholder="Optional notes"></textarea>
+      </div>
+
+      <div class="dialog-actions">
+        <button id="add-clear" class="btn" type="reset">Clear</button>
+        <button id="add-cancel" class="btn" type="button">Cancel</button>
+        <button id="add-confirm" class="btn primary" type="submit">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Generic Lightbox -->
+  <dialog id="lightbox">
+    <div>
+      <div class="actions" style="justify-content:flex-end">
+        <button id="lightbox-close" class="btn">Close</button>
+      </div>
+      <div id="lightbox-content"></div>
+    </div>
+  </dialog>
+
+  <!-- Toasts -->
+  <div id="toast-layer" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="app.js" defer></script>
+
+<!-- Confirm Reset Dialog (needed by app.js -> setupReset) -->
+<dialog id="confirm-reset" aria-labelledby="confirm-reset-title" aria-modal="true">
+  <div>
+    <h3 id="confirm-reset-title">Reset all data?</h3>
+    <p class="muted">This will erase all tasks, characters, settings, and activity from this device.</p>
+    <div class="dialog-actions">
+      <button id="reset-cancel-btn" class="btn" type="button">Cancel</button>
+      <button id="reset-confirm-btn" class="btn danger" type="button">Yes, reset everything</button>
+    </div>
+  </div>
+</dialog>
+</body>
+</html>
