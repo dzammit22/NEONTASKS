@@ -1,590 +1,405 @@
-:root{
-  --bg:#0b0f1a;
-  --bg2:#0d1222;
-  --panel:#11162a;
-  --text:#e6f1ff;
-  --muted:#9fb2c8;
-  --cyan:#00fff0;
-  --pink:#ff33cc;
-  --purple:#a26bff;
-  --yellow:#ffe066;
-  --red:#ff355e;
-  --radius:16px;
-  --radius-sm:12px;
-  --glow:0 0 18px rgba(0,255,240,.35), 0 0 6px rgba(0,255,240,.6);
-  --shadow:0 10px 30px rgba(0,0,0,.35);
-  --gap:14px;
-}
+/* Add these new styles to your existing styles.css */
 
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0; font-family:system-ui,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
-  color:var(--text); background: radial-gradient(1200px 800px at 10% -10%, #0e1430,transparent 60%), linear-gradient(#0b0f1a,#090d18);
-}
-
-.sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
-small{opacity:.7}
-
-/* Header */
+/* Header adjustments - remove powerbar since it's character-specific now */
 .app-header{
   position:sticky; top:0; z-index:5; background:linear-gradient(180deg, rgba(11,15,26,.95),rgba(11,15,26,.6));
   backdrop-filter: blur(8px);
-  display:flex; align-items:center; gap:18px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.06)
-}
-.logo{font-weight:800; letter-spacing:.5px}
-.logo span{color:var(--cyan); text-shadow:var(--glow)}
-.logo small{font-weight:600; opacity:.7}
-
-/* Powerbar */
-.powerbar{flex:1}
-.powerbar-label{font-size:.9rem; color:var(--muted); display:flex; justify-content:space-between}
-.powerbar-outer{height:10px; background:#0b162e; border-radius:999px; overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,.6)}
-#powerbar-inner{height:100%; width:0%; background:linear-gradient(90deg,var(--cyan),var(--pink)); box-shadow: var(--glow); transition:width .6s ease}
-
-/* Tabs */
-.tabs{
-  position:sticky; top:58px; z-index:5; display:flex; overflow:auto; gap:8px; padding:8px 8px 10px;
-  background:linear-gradient(180deg, rgba(11,15,26,.9), rgba(11,15,26,.5));
-  border-bottom:1px solid rgba(255,255,255,.06)
-}
-.tab{
-  border:1px solid rgba(255,255,255,.1); background:linear-gradient(180deg,#0f1530,#0b1028);
-  color:var(--text); padding:9px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;
-  box-shadow:0 2px 10px rgba(0,0,0,.35)
-}
-.tab[aria-selected="true"]{
-  border-color: rgba(0,255,240,.5);
-  box-shadow: 0 0 0 1px rgba(0,255,240,.4), inset 0 0 22px rgba(0,255,240,.12);
-  text-shadow: var(--glow);
+  display:flex; align-items:center; gap:18px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.06);
+  justify-content: center; /* Center the logo since no powerbar */
 }
 
-/* Main containers */
-main{padding:14px; display:grid; gap:16px; max-width:1100px; margin:0 auto}
-.card{
-  background: linear-gradient(180deg, rgba(17,22,42,.9), rgba(14,18,33,.85));
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:var(--radius);
-  box-shadow: var(--shadow);
-  padding:14px;
+/* XP indicators in summary tiles */
+.xp-indicator { 
+  font-size: 0.75rem; 
+  color: var(--cyan); 
+  margin-top: 2px; 
+  font-weight: 600; 
+  text-shadow: 0 0 8px rgba(0,255,240,.4);
 }
 
-.field{display:flex; flex-direction:column; gap:6px; margin-bottom:12px}
-.field input, .field select, .field textarea{
-  background:#0c142b; border:1px solid rgba(255,255,255,.08); color:var(--text); padding:10px 12px;
-  border-radius:var(--radius-sm); outline: none; transition:border-color .2s
-}
-.field input:focus, .field select:focus, .field textarea:focus{
-  border-color:var(--cyan); box-shadow:0 0 0 2px rgba(0,255,240,.2)
-}
-.req{color:var(--pink)}
-
-.row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-.actions{display:flex; gap:10px}
-
-.btn{
-  background:#121a35; color:var(--text); border:1px solid rgba(255,255,255,.12);
-  border-radius:12px; padding:9px 12px; cursor:pointer; transition:transform .08s ease, box-shadow .2s;
-}
-.btn.primary{background: linear-gradient(90deg, #132647, #11213f); border-color: rgba(0,255,240,.35)}
-.btn:hover{box-shadow: 0 0 10px rgba(255,255,255,.1)}
-.btn:active{transform: translateY(1px)}
-.btn.danger{border-color: rgba(255,53,94,.45); color:#ffd7de; background:linear-gradient(90deg,#2a0f18,#2a0b17)}
-
-.muted{color:var(--muted)}
-
-/* Summary grid */
-.summary-grid{
-  display:grid; gap:12px; grid-template-columns: repeat(3, minmax(0,1fr));
-}
-@media(min-width:800px){ .summary-grid{ grid-template-columns: repeat(6, minmax(0,1fr)); } }
-.tile{
-  position:relative; overflow:hidden; border-radius:18px; height:120px; cursor:pointer;
-  background:linear-gradient(180deg,#0f1530,#0b1028); border:1px solid rgba(255,255,255,.08)
-}
-.tile .label{
-  position:absolute; bottom:8px; left:10px; font-weight:700; text-shadow: var(--glow);
-}
-.tile img{position:absolute; inset:auto 0 0 0; width:100%; height:100%; object-fit:cover; opacity:.9; filter:saturate(1.4)}
-.tile::after{
-  content:""; position:absolute; inset:0; background: radial-gradient(250px 140px at 80% -20%, rgba(255,51,204,.25), transparent 60%);
+/* Tier button styling */
+.tier-buttons {
+  gap: 6px !important;
+  margin-top: 6px;
 }
 
-/* Toolbar */
-.toolbar{display:grid; gap:10px}
-.toolbar .chips{display:flex; gap:8px; flex-wrap:wrap}
-.chip{
-  background:#0d1a2d; border:1px solid rgba(255,255,255,.08); padding:6px 10px; border-radius:999px; color:var(--text)
-}
-.chip[aria-pressed="true"]{border-color: rgba(0,255,240,.4); box-shadow: var(--glow)}
-.category-pills{display:flex; gap:8px; overflow:auto; padding-bottom:4px}
-.category-pills .chip{white-space:nowrap}
-
-/* Stats */
-.stats{display:flex; gap:12px; color:var(--muted); font-size:.9rem}
-
-/* Tasks */
-.task-groups{display:grid; gap:12px}
-.group .group-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
-.group .group-body{display:grid; gap:8px}
-.task{
-  position:relative; display:grid; gap:8px; grid-template-columns:auto 1fr auto; align-items:center;
-  background:#0b1326; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:10px;
-  overflow:hidden;
-}
-.task .p-dot{width:10px; height:10px; border-radius:999px; box-shadow:0 0 8px currentColor}
-.task .title{font-weight:700}
-.task .meta{display:flex; gap:6px; flex-wrap:wrap; color:var(--muted); font-size:.85rem}
-.task .meta .pill{background:#16213e; padding:3px 8px; border-radius:999px}
-.task .notes{grid-column:1/-1; color:#b7c6db; font-size:.95rem}
-.task .actions{display:flex; gap:8px}
-.task.done{opacity:.6}
-.task .hint{position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; pointer-events:none; color:#6e84a7; padding:0 12px; font-size:.9rem}
-
-/* Swipe animation hint overlays */
-.task .hint span:first-child{opacity:.85}
-.task .hint span:last-child{opacity:.85}
-
-/* FAB */
-.fab{
-  position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; font-size:28px;
-  background:linear-gradient(180deg,#0f2c52,#0b1f3a); color:var(--text);
-  border:1px solid rgba(0,255,240,.35); box-shadow: var(--shadow), var(--glow);
+.tier-btn {
+  font-size: 0.85rem !important;
+  padding: 6px 10px !important;
+  min-width: 0;
+  flex: 1;
+  background: linear-gradient(90deg, #1a2847, #152139) !important;
+  border: 1px solid rgba(0,255,240,.25) !important;
+  color: var(--cyan) !important;
+  font-weight: 600;
+  text-shadow: 0 0 6px rgba(0,255,240,.3);
 }
 
-/* Dialog */
-dialog{
-  border:none; border-radius:16px; padding:0; overflow:hidden; background:transparent;
-}
-dialog::backdrop{background: rgba(4,6,12,.6); backdrop-filter: blur(4px)}
-dialog form, dialog > div{
-  background: linear-gradient(180deg, rgba(17,22,42,.98), rgba(12,16,33,.95));
-  border:1px solid rgba(255,255,255,.08); padding:16px; min-width:min(92vw,560px)
-}
-.dialog-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
-.pill-select{display:flex; gap:8px; flex-wrap:wrap}
-.pill-select .chip[aria-pressed="true"]{border-color: rgba(255,51,204,.4); box-shadow:0 0 0 1px rgba(255,51,204,.4), 0 0 10px rgba(255,51,204,.15)}
-.char-preview{height:120px; border-radius:12px; background:#0d1430; border:1px dashed rgba(255,255,255,.1); margin-top:8px; display:flex; align-items:center; justify-content:center}
-
-/* Calendar */
-.calendar-header{display:grid; gap:8px}
-.cal-controls{display:flex; gap:8px; flex-wrap:wrap}
-#cal-title{text-align:center}
-.calendar-grid{
-  display:grid; gap:8px;
-  grid-template-columns: repeat(7, minmax(0,1fr));
-}
-.day{
-  position:relative; background:#0b1326; border:1px solid rgba(255,255,255,.06); border-radius:12px; min-height:88px; padding:6px;
-}
-.day .d-head{display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:.85rem}
-.chips{display:flex; gap:4px; flex-wrap:wrap; margin-top:4px}
-.chip-task{
-  font-size:.75rem; padding:2px 6px; border-radius:999px; background:#142548; color:#cfe7ff; border:1px solid rgba(255,255,255,.08)
-}
-.chip-task.dim{opacity:.5}
-.priority-dot{
-  display:inline-block; width:6px; height:6px; border-radius:999px; margin-right:6px; box-shadow:0 0 8px currentColor
-}
-.dot-only{width:6px;height:6px;border-radius:999px;display:inline-block}
-
-/* Characters */
-.empty{color:#b9c5d8; border-style:dashed}
-.chars-grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(220px,1fr))}
-.char-card{
-  background:#0b1326; border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden;
-}
-.char-portrait{height:160px; background:#0f1530; position:relative}
-.char-portrait img{width:100%; height:100%; object-fit:cover; filter:saturate(1.3)}
-.char-body{padding:10px; display:grid; gap:6px}
-.progress{height:8px; border-radius:999px; background:#0c1730; overflow:hidden}
-.progress > div{height:100%; background:linear-gradient(90deg,var(--yellow),var(--pink)); width:0%}
-
-/* Boss */
-.boss-card .boss-head{display:flex; align-items:baseline; justify-content:space-between}
-.powerbar .powerbar-outer #party-inner{height:100%; width:0%; background:linear-gradient(90deg,var(--yellow),var(--pink)); box-shadow:0 0 12px rgba(255,224,102,.35)}
-.boss-stats{margin:8px 0; display:flex; gap:16px}
-.boss-result{margin-top:10px; min-height:26px}
-
-/* Toasts */
-#toast-layer{position:fixed; inset:auto 0 0 0; display:grid; justify-items:center; gap:8px; padding:10px; pointer-events:none}
-.toast{
-  background:linear-gradient(180deg,#112244,#0E1B36); border:1px solid rgba(0,255,240,.35);
-  color:#cffffa; padding:10px 12px; border-radius:12px; box-shadow: var(--shadow), var(--glow);
-  animation: rise 900ms ease forwards;
-}
-@keyframes rise{0%{transform:translateY(10px); opacity:0} 100%{transform:translateY(-10px); opacity:1}}
-
-.glow-pulse{animation: glow 1.6s ease-in-out infinite}
-@keyframes glow{
-  0%{box-shadow:0 0 0 rgba(0,255,240,0)}
-  50%{box-shadow:0 0 22px rgba(0,255,240,.35)}
-  100%{box-shadow:0 0 0 rgba(0,255,240,0)}
+.tier-btn:not([disabled]):hover {
+  background: linear-gradient(90deg, #2a3857, #253149) !important;
+  border-color: rgba(0,255,240,.45) !important;
+  box-shadow: 0 0 12px rgba(0,255,240,.2) !important;
 }
 
-/* Complete ZAP */
-.zap::after{
-  content:""; position:absolute; inset:0; background: linear-gradient(90deg, transparent, rgba(0,255,240,.25), transparent);
-  animation: zap 600ms ease; pointer-events:none
+.tier-btn[disabled] {
+  background: #0c1326 !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: #5a6b82 !important;
+  text-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
-@keyframes zap{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
 
-/* Focus */
-:focus-visible{outline:2px solid var(--cyan); outline-offset:2px}
+/* Character card progress bars - enhanced styling */
+.char-card .progress {
+  height: 10px !important;
+  border-radius: 999px;
+  background: #0c1730;
+  overflow: hidden;
+  box-shadow: inset 0 0 8px rgba(0,0,0,.4);
+  border: 1px solid rgba(255,255,255,.05);
+}
 
-/* Minor utilities */
-.flex{display:flex;align-items:center;gap:8px}
-.pink{color:var(--pink)} .cyan{color:var(--cyan)} .yellow{color:var(--yellow)} .red{color:var(--red)}
+.char-card .progress > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--pink));
+  width: 0%;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 12px rgba(0,255,240,.3);
+}
 
-/* ——— Summary / Recent activity ——— */
-#view-summary{
-  display: grid;              /* gives natural vertical spacing between grid + activity */
+/* Locked character styling enhancements */
+.char-card.locked .lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #def;
+  text-shadow: 0 0 12px rgba(123,200,255,.6);
+  font-weight: 700;
+  letter-spacing: .4px;
+  background: radial-gradient(ellipse at center, rgba(17,23,43,.4), rgba(17,23,43,.0) 65%);
+  pointer-events: none;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 8px;
+}
+
+/* Character body info layout */
+.char-body {
+  padding: 12px !important;
+  display: grid;
+  gap: 8px !important;
+}
+
+.char-body > div:first-child {
+  margin-bottom: 2px;
+}
+
+.char-body > div:nth-child(2) {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* Summary activity section spacing */
+#view-summary {
+  display: grid;
   gap: 18px;
 }
 
-#summary-activity{
-  padding: 12px 14px;
-}
-
-#summary-activity .group-head{
-  display:flex; justify-content:space-between; align-items:center;
+.summary-grid {
   margin-bottom: 6px;
 }
 
-#summary-activity .activity-list{
+#summary-activity {
+  padding: 12px 14px;
+}
+
+#summary-activity .group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+#summary-activity .activity-list {
   display: grid;
   row-gap: 6px;
 }
 
-.activity-row{
+.activity-row {
   display: grid;
-  grid-template-columns: 1.4em 1fr auto;  /* icon | text | date */
+  grid-template-columns: 1.4em 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 6px 0;
   border-top: 1px solid rgba(255,255,255,.06);
 }
-.activity-row:first-child{ border-top: none; }
 
-.activity-row .a-icn{
-  text-align:center; width:1.4em; opacity:.95;
+.activity-row:first-child {
+  border-top: none;
 }
-.activity-row .a-text{
-  min-width: 0;                /* enable ellipsis in grid */
+
+.activity-row .a-icn {
+  text-align: center;
+  width: 1.4em;
+  opacity: .95;
+}
+
+.activity-row .a-text {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;     /* keeps it to a single line */
+  text-overflow: ellipsis;
 }
-.activity-row .a-date{
+
+.activity-row .a-date {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* a little extra breathing room under the character tiles on small screens */
-@media (max-width: 600px){
-  .summary-grid{ margin-bottom: 6px; }
+/* Config section styling */
+.card h3 {
+  margin-bottom: 8px;
+  color: var(--text);
 }
 
-/* --- Fix Add Task Dialog --- */
-#add-dialog form {
-  min-width: min(90vw, 460px); /* narrower than before */
-  padding: 12px;
+.card p.muted {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
 }
 
-#add-dialog .field input,
-#add-dialog .field select,
-#add-dialog .field textarea {
-  font-size: 0.95rem;
-  padding: 8px 10px;
-}
-
-#add-dialog .dialog-actions {
-  margin-top: 10px;
-}
-
-/* Make the Add button more visible */
-#add-confirm.btn.primary {
-  background: linear-gradient(90deg, #00b3ff, #ff33cc);
-  color: #fff !important;
-  font-weight: 600;
-  text-shadow: 0 0 6px rgba(0,0,0,.6);
-}
-
-/* ==== Add Task dialog: compact + readable + always-reachable buttons ==== */
-
-/* Make THIS dialog narrower, scrollable, and shorter on phones */
-#add-dialog form{
-  width: auto !important;
-  min-width: auto !important;                /* override global dialog min-width */
-  max-width: 440px !important;               /* keep it slim */
-  max-height: 82vh !important;               /* never taller than the viewport */
-  overflow: auto !important;                 /* allow scrolling if content is long */
-  padding: 12px !important;
-}
-
-/* Tighten vertical rhythm */
-#add-dialog .field{ margin-bottom: 10px !important; }
-#add-dialog .row{ gap: 10px !important; }
-
-/* Smaller inputs and guaranteed white text */
-#add-dialog .field input,
-#add-dialog .field select,
-#add-dialog .field textarea{
-  padding: 8px 10px !important;
-  font-size: 0.95rem !important;
-  color: #fff !important;
-  caret-color: #fff !important;
-}
-
-/* Make labels show brighter too */
-#add-dialog label{ color: #eaf2ff !important; }
-
-/* Shrink the character preview so it doesn't push the form down */
-#add-dialog .char-preview{
-  height: 88px !important;
-}
-
-/* Keep the action bar visible; sticky inside the scrollable form */
-#add-dialog .dialog-actions{
-  position: sticky !important;
-  bottom: 0 !important;
-  background: linear-gradient(180deg, rgba(17,22,42,0.92), rgba(17,22,42,0.98)) !important;
-  padding-top: 8px !important;
-  margin-top: 8px !important;
-  z-index: 1;
-}
-
-/* High-contrast Add button */
-#add-confirm.btn.primary{
-  background: linear-gradient(90deg, #00b3ff, #ff33cc) !important;
-  color: #fff !important;
-  font-weight: 700 !important;
-  border-color: rgba(255,255,255,0.25) !important;
-  text-shadow: 0 1px 6px rgba(0,0,0,.6) !important;
-}
-
-/* Make the whole dialog a bit tighter on very small screens */
-@media (max-width: 420px){
-  #add-dialog form{ max-width: 94vw !important; max-height: 80vh !important; }
-}
-
-/* Remove character portrait preview in Add Task dialog */
-#add-dialog .char-preview {
-  display: none !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-}
-
-/* Ensure tabpanels REALLY hide on all browsers */
-[hidden] { display: none !important; }
-
-/* ==== Task card tidy-up ==== */
-
-/* grid: dot | content | actions */
-.task{
-  grid-template-columns: auto 1fr auto !important;
-  align-items: start !important;
-}
-
-/* allow ellipsis in the middle column */
-.task > .p-dot + div{ min-width: 0 !important; }
-
-/* title: single line, no wrap */
-.task .title{
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  margin-bottom: 4px !important;
-}
-
-/* meta pills: wrap neatly with small gaps */
-.task .meta{
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 6px !important;
-  row-gap: 6px !important;
-}
-.task .meta .pill{
-  margin: 0 !important;
-  line-height: 1.1 !important;
-  font-size: .82rem !important;
-  padding: 3px 8px !important;
-}
-
-/* action buttons: keep to the right, never wrap */
-.task .actions{
-  display: grid !important;
-  gap: 6px !important;
-  justify-items: end !important;
-}
-.task .actions .btn{ white-space: nowrap !important; }
-
-/* notes: clamp so long notes don't blow up the card */
-.task .notes{
-  color: #cfe1ff !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2;            /* set to 3 if you prefer */
-  -webkit-box-orient: vertical;
-  overflow: hidden !important;
-  margin-top: 6px !important;
-}
-
-/* swipe helper text: hide on small screens so it doesn't overlay chips */
-@media (max-width: 640px){
-  .task .hint{ display: none !important; }
-}
-/* keep it subtle on larger screens */
-@media (min-width: 641px){
-  .task .hint{ opacity: 0; transition: opacity .2s; }
-  .task:hover .hint, .task:focus-within .hint{ opacity: .75; }
-}
-
-/* ==== Task action button color coding ==== */
-
-.task .btn-done {
-  background: linear-gradient(90deg, #0b3d1a, #145a28) !important;
-  border: 1px solid rgba(0,255,120,.4) !important;
-  color: #a6ffcf !important;
-  font-weight: 600;
-  text-shadow: 0 0 6px rgba(0,0,0,.6);
-}
-.task .btn-done:hover {
-  background: linear-gradient(90deg, #0e5121, #1a7f3c) !important;
-  color: #d6ffe9 !important;
-}
-
-.task .btn-del {
-  background: linear-gradient(90deg, #3d0b15, #5a1420) !important;
-  border: 1px solid rgba(255,70,70,.45) !important;
-  color: #ffcfd6 !important;
-  font-weight: 600;
-  text-shadow: 0 0 6px rgba(0,0,0,.6);
-}
-.task .btn-del:hover {
-  background: linear-gradient(90deg, #5f101c, #8a1a2c) !important;
-  color: #fff0f3 !important;
-}
-
-/* ==== Toasts always on top + clearer ==== */
-#toast-layer{
-  z-index: 9999 !important;   /* above FAB, dialogs, etc. */
-  bottom: 12px !important;
-}
-
-.toast{
-  background: linear-gradient(180deg,#132a52,#0E1B36) !important;
-  border: 1px solid rgba(0,255,240,.55) !important;
-  color: #eafffb !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 18px rgba(0,255,240,.35) !important;
-  opacity: 1 !important;      /* ensure not semi-hidden */
-}
-
-/* keep swipe hint under everything */
-.task .hint{ z-index: 0 !important; }
-
-/* make sure FAB isn't above toasts (still above content) */
-.fab{ z-index: 1000 !important; }
-
-/* ==== Calendar dialog text fix ==== */
-
-/* Make dialog titles white */
-#lightbox h3 {
-  color: #fff !important;
-  font-weight: 700;
-  text-shadow: 0 0 6px rgba(0,255,240,.35);
-}
-
-/* Task cards inside calendar lightbox */
-#lightbox .task {
-  color: #fff !important;
-}
-
-/* Task titles in calendar */
-#lightbox .task .title {
-  color: #fff !important;
-  font-weight: 600;
-}
-
-/* Notes inside tasks should also be bright */
-#lightbox .task .notes {
-  color: #e9f4ff !important;
-}
-
-/* Meta pills keep their style but bump text contrast */
-#lightbox .task .meta {
-  color: #d1e4ff !important;
-}
-#lightbox .task .meta .pill {
-  color: #f0f7ff !important;
-}
-
-/* ==== Calendar dialog text fix ==== */
-
-/* Make dialog titles white */
-#lightbox h3 {
-  color: #fff !important;
-  font-weight: 700;
-  text-shadow: 0 0 6px rgba(0,255,240,.35);
-}
-
-/* Task cards inside calendar lightbox */
-#lightbox .task {
-  color: #fff !important;
-}
-
-/* Task titles in calendar */
-#lightbox .task .title {
-  color: #fff !important;
-  font-weight: 600;
-}
-
-/* Notes inside tasks should also be bright */
-#lightbox .task .notes {
-  color: #e9f4ff !important;
-}
-
-/* Meta pills keep their style but bump text contrast */
-#lightbox .task .meta {
-  color: #d1e4ff !important;
-}
-#lightbox .task .meta .pill {
-  color: #f0f7ff !important;
-}
-
-/* ==== Summary: crop/zoom portraits to headshots ==== */
-#view-summary .tile{ overflow: hidden; }
-
-#view-summary .tile img{
-  /* push the crop toward the top so heads are in frame */
-  object-fit: cover;
-  object-position: top center;
-  transform: scale(1.24);              /* zoom in */
-  transform-origin: top center;
-  transition: transform .25s ease, filter .25s ease;
-}
-
-/* Keep locked placeholders centered (don’t crop these) */
-#view-summary .tile.locked img{
-  object-position: center;
-  transform: none;
-}
-
-/* slight hover polish on desktop */
-@media (hover:hover){
-  #view-summary .tile:hover img{
-    transform: scale(1.3);
-    filter: saturate(1.4) contrast(1.05);
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .summary-grid {
+    margin-bottom: 6px;
+  }
+  
+  .tier-buttons {
+    gap: 4px !important;
+  }
+  
+  .tier-btn {
+    font-size: 0.8rem !important;
+    padding: 5px 8px !important;
+  }
+  
+  .char-card .progress {
+    height: 8px !important;
   }
 }
 
-/* ==== Summary: tighter headshot crop ==== */
-#view-summary .tile img{
-  object-fit: cover;
-  object-position: top center;
-  transform: scale(1.7);   /* more zoom — bump until heads are framed well */
-  transform-origin: top center;
-  transition: transform .25s ease, filter .25s ease;
+/* Enhanced lightbox styling for character lore */
+#lightbox-content h3 {
+  color: #fff !important;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(0,255,240,.35);
+  margin-bottom: 12px;
+}
+
+#lightbox-content p {
+  line-height: 1.6;
+  color: #e6f1ff !important;
+  margin: 12px 0;
+}
+
+#lightbox-content img {
+  border: 2px solid rgba(0,255,240,.2);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 16px rgba(0,255,240,.1);
+}
+
+/* Tier unlock toast styling */
+.toast .yellow {
+  color: var(--yellow) !important;
+  text-shadow: 0 0 8px rgba(255,224,102,.5);
+}
+
+/* Character unlock progress styling in summary */
+.tile.locked .xp-indicator {
+  color: #9fb3ff !important;
+  opacity: 0.8;
+}
+
+.tile:not(.locked) .xp-indicator {
+  color: var(--cyan) !important;
+  text-shadow: 0 0 8px rgba(0,255,240,.4);
+}
+
+/* Make sure tier buttons are properly styled when disabled */
+.tier-btn[disabled]::after {
+  content: " 🔒";
+  opacity: 0.6;
+}
+
+/* Progress bar animation */
+@keyframes progress-glow {
+  0% { box-shadow: 0 0 8px rgba(0,255,240,.2); }
+  50% { box-shadow: 0 0 16px rgba(0,255,240,.4); }
+  100% { box-shadow: 0 0 8px rgba(0,255,240,.2); }
+}
+
+.char-card .progress > div {
+  animation: progress-glow 2s ease-in-out infinite;
+}
+
+/* Character rarity styling */
+.char-body .pink {
+  color: var(--pink) !important;
+  font-weight: 600;
+  text-shadow: 0 0 6px rgba(255,51,204,.4);
+}
+
+.char-body .muted {
+  color: var(--muted) !important;
+}
+
+/* Enhanced config section layout */
+#view-config .card {
+  margin-bottom: 16px;
+}
+
+#view-config .row {
+  align-items: end;
+}
+
+#view-config .actions {
+  margin-top: 0;
+  align-self: end;
+}
+
+/* Better field spacing in config */
+#view-config .field {
+  margin-bottom: 0;
+}
+
+/* Character portrait hover effects */
+.char-portrait {
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.char-card:not(.locked) .char-portrait:hover {
+  transform: scale(1.02);
+}
+
+.char-portrait img {
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.char-card:not(.locked) .char-portrait:hover img {
+  filter: saturate(1.4) brightness(1.1);
+}
+
+/* Ensure locked characters are properly styled */
+.char-card.locked {
+  position: relative;
+  opacity: 0.8;
+}
+
+.char-card.locked img {
+  filter: blur(4px) saturate(.6) brightness(.7) contrast(.9);
+  opacity: .75;
+}
+
+/* Activity icons with better styling */
+.activity-row .a-icn {
+  font-size: 1.1em;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,.2));
+}
+
+/* Improved toast positioning and styling */
+#toast-layer {
+  position: fixed;
+  inset: auto 0 12px 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.toast {
+  background: linear-gradient(180deg, #132a52, #0E1B36) !important;
+  border: 1px solid rgba(0,255,240,.55) !important;
+  color: #eafffb !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 18px rgba(0,255,240,.35) !important;
+  animation: rise 900ms ease forwards;
+  max-width: 90vw;
+  text-align: center;
+}
+
+@keyframes rise {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(-10px); opacity: 1; }
+}
+
+/* FAB positioning to avoid toast overlap */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: 80px; /* Raised to avoid toast layer */
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  font-size: 28px;
+  background: linear-gradient(180deg, #0f2c52, #0b1f3a);
+  color: var(--text);
+  border: 1px solid rgba(0,255,240,.35);
+  box-shadow: var(--shadow), var(--glow);
+  z-index: 1000;
+}
+
+/* Character category XP display improvements */
+.summary-grid .tile {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-grid .tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 20px rgba(0,255,240,.1);
+}
+
+.summary-grid .tile .label {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  right: 10px;
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(0,255,240,.4);
+}
+
+/* Better visual hierarchy in character cards */
+.char-body strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Ensure proper text contrast in all dialogs */
+dialog h3, #lightbox h3 {
+  color: #fff !important;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(0,255,240,.35);
+}
+
+dialog p, #lightbox p {
+  color: #e6f1ff !important;
+}
+
+/* Config form improvements */
+#view-config input[type="number"] {
+  width: 100%;
+}
+
+#view-config .btn.primary {
+  background: linear-gradient(90deg, #00b3ff, #ff33cc) !important;
+  color: #fff !important;
+  font-weight: 600;
+  text-shadow: 0 0 6px rgba(0,0,0,.6);
 }
