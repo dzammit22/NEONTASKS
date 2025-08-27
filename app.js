@@ -112,35 +112,31 @@
     return `data:image/svg+xml;charset=utf-8,${svg}`;
   }
 
-  function placeholderPortraitForCategory(cat){
+  function gachaReadyPortraitForCategory(cat){
     const color = {
       Fitness:"#23ffd9", Home:"#a26bff", Finance:"#ffe066",
       Work:"#ff33cc", Rose:"#ff6ad5", Skills:"#66ccff", Other:"#66ff99"
     }[cat] || "#6bf";
-    const label = cat.toUpperCase();
     const svg = encodeURIComponent(
 `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'>
   <defs>
     <linearGradient id='g' x1='0' x2='1'>
-      <stop stop-color='${color}' stop-opacity='.35' offset='0'/>
+      <stop stop-color='${color}' stop-opacity='.6' offset='0'/>
       <stop stop-color='#0b0f1a' offset='1'/>
     </linearGradient>
     <filter id='glow'><feGaussianBlur stdDeviation='4' result='b'/><feMerge><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter>
   </defs>
   <rect width='640' height='420' rx='26' fill='url(#g)'/>
-  <g opacity='.25' stroke='${color}' fill='none' stroke-width='4'>
+  <g opacity='.8' stroke='${color}' fill='none' stroke-width='4'>
     <rect x='30' y='30' width='580' height='360' rx='22'/>
   </g>
-  <g transform='translate(0,-10)' opacity='.45'>
-    <circle cx='320' cy='180' r='58' fill='${color}' opacity='.25'/>
-    <rect x='220' y='235' width='200' height='120' rx='30' fill='${color}' opacity='.18'/>
+  <g transform='translate(320,210)' filter='url(#glow)'>
+    <circle r='80' fill='none' stroke='${color}' stroke-width='6' opacity='.9'/>
+    <circle r='60' fill='none' stroke='${color}' stroke-width='4' opacity='.7'/>
+    <circle r='40' fill='none' stroke='${color}' stroke-width='3' opacity='.5'/>
+    <text y='8' text-anchor='middle' font-size='24' fill='${color}' font-family='system-ui' font-weight='700'>?</text>
   </g>
-  <g filter='url(#glow)'>
-    <rect x='275' y='240' width='90' height='70' rx='12' fill='none' stroke='${color}' stroke-width='4'/>
-    <path d='M300 240 v-20 a20 20 0 0 1 40 0 v20' stroke='${color}' stroke-width='4' fill='none'/>
-  </g>
-  <text x='50%' y='78%' text-anchor='middle' font-size='28' fill='#d9e6ff' opacity='.9'
-        font-family='system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'>${label} · LOCKED</text>
+  <animateTransform attributeName='transform' type='rotate' values='0 320 210;360 320 210' dur='4s' repeatCount='indefinite'/>
 </svg>`);
     return `data:image/svg+xml;charset=utf-8,${svg}`;
   }
@@ -268,14 +264,21 @@
         const cat = CSV_TO_APP_CATEGORY[csvCategory] || csvCategory;
         const categoryLower = cat.toLowerCase().replace(/\s+/g, '-');
 
-        // Use the exact image filename from CSV if provided
+        // Debug log the mapping
+        console.log(`Processing: ${rawName} -> ${rawImg} for category ${cat}`);
+
+        // Use the exact image filename from CSV, with proper handling
         let imagePath;
         if (rawImg && rawImg.trim() !== "") {
-          // Use the exact filename from CSV
-          imagePath = `assets/characters/${categoryLower}/${rawImg.trim()}`;
+          // Clean the filename and ensure it has extension
+          let cleanImg = rawImg.trim();
+          if (!cleanImg.includes('.')) {
+            cleanImg += '.png'; // Add extension if missing
+          }
+          imagePath = `assets/characters/${categoryLower}/${cleanImg}`;
         } else {
-          // Fallback to numbered naming only if no image specified
-          imagePath = `assets/characters/${categoryLower}/${categoryLower}-${1 + Math.floor(Math.random()*3)}.png`;
+          // Fallback only if completely missing
+          imagePath = `assets/characters/${categoryLower}/${categoryLower}-default.png`;
         }
 
         const character = {
@@ -283,15 +286,22 @@
           image: imagePath,
           name: rawName || `${cat} Ally`,
           rarity: rawRarity || "R",
-          lore: { A: loreA, B: loreB, C: loreC }
+          lore: { 
+            A: loreA || `The origins of this ${cat} operative remain shrouded in mystery...`,
+            B: loreB || `Through countless missions, this ally has proven their worth time and again...`,
+            C: loreC || `At the pinnacle of their abilities, they stand as a legend among operatives...`
+          }
         };
         
         if (!byCat[cat]) byCat[cat] = [];
         byCat[cat].push(character);
         processedCount++;
+        
+        console.log(`Added character: ${character.name} with image: ${character.image}`);
       }
       
       console.log(`✓ Successfully processed ${processedCount} characters from CSV`);
+      console.log("Final character pool:", byCat);
       return byCat;
       
     } catch(e) {
@@ -474,29 +484,40 @@
     grid.innerHTML = cats.map(cat=>{
       const unlocked = isUnlocked(cat);
       const categoryXP = getCategoryXP(cat);
+      const readyToOpen = STATE.readyToOpen && STATE.readyToOpen[cat];
       
-      // Show actual unlocked character or placeholder for locked
-      const portrait = unlocked
-        ? (STATE.characters[cat]?.image || defaultPortraitForCategory(cat))
-        : placeholderPortraitForCategory(cat);
-        
-      const progressText = unlocked 
-        ? `${categoryXP} XP`
-        : `${categoryXP}/${STATE.config.characterUnlockThreshold} XP`;
+      let portrait, labelClass = "", labelText = cat;
+      
+      if (unlocked) {
+        // Already unlocked - show character
+        portrait = STATE.characters[cat]?.image || defaultPortraitForCategory(cat);
+        labelText = `${cat}<div class="xp-indicator">${categoryXP} XP</div>`;
+      } else if (readyToOpen) {
+        // Ready to open gacha
+        portrait = gachaReadyPortraitForCategory(cat);
+        labelClass = "ready-to-open";
+        labelText = `${cat}<div class="gacha-indicator">Tap to open!</div>`;
+      } else {
+        // Still locked
+        portrait = placeholderPortraitForCategory(cat);
+        labelText = `${cat}<div class="xp-indicator">${categoryXP}/${STATE.config.characterUnlockThreshold} XP</div>`;
+      }
         
       return `
-        <button class="tile ${unlocked? "" : "locked"}" data-cat="${cat}" aria-label="${cat} ${unlocked?'portrait':'locked'}">
+        <button class="tile ${unlocked ? "" : (readyToOpen ? "ready-gacha" : "locked")}" data-cat="${cat}" aria-label="${cat} ${unlocked ? 'portrait' : (readyToOpen ? 'ready to open' : 'locked')}">
           <img alt="" src="${portrait}">
-          <div class="label">${cat}
-            <div class="xp-indicator">${progressText}</div>
-          </div>
+          <div class="label ${labelClass}">${labelText}</div>
         </button>`;
     }).join("");
 
     grid.querySelectorAll(".tile").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const cat = btn.dataset.cat;
-        if (isUnlocked(cat)) {
+        const unlocked = isUnlocked(cat);
+        const readyToOpen = STATE.readyToOpen && STATE.readyToOpen[cat];
+        
+        if (unlocked) {
+          // Show unlocked character details
           const img = STATE.characters[cat]?.image || defaultPortraitForCategory(cat);
           const char = STATE.characters[cat];
           const tier = getCharacterTier(char);
@@ -508,7 +529,11 @@
               <p><strong>${char.categoryXP || 0} XP</strong> · ${cat} Category</p>
             </div>
           `);
+        } else if (readyToOpen) {
+          // Open gacha!
+          openGachaFor(cat);
         } else {
+          // Show lock progress
           const categoryXP = getCategoryXP(cat);
           const needed = STATE.config.characterUnlockThreshold - categoryXP;
           openLightbox(`
@@ -958,52 +983,80 @@
     
     // Check if we should unlock the character (gacha mechanic trigger)
     if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
-      // Randomly pick from the available characters in this category (gacha surprise!)
-      const availableChars = CHAR_POOL[category] || [];
-      let pick;
-      
-      if (availableChars.length > 0) {
-        // Random selection for the gacha unlock
-        pick = availableChars[Math.floor(Math.random() * availableChars.length)];
-      } else {
-        // Fallback if no characters available
-        pick = {
-          name: `${category} Ally`, 
-          image: defaultPortraitForCategory(category), 
-          rarity: "R", 
-          category,
-          lore: {
-            A: `The origins of this ${category} operative remain shrouded in mystery...`,
-            B: `Through countless missions, this ally has proven their worth time and again...`,
-            C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
-          }
-        };
-      }
-      
-      // Ensure lore exists
-      if (!pick.lore) {
-        pick.lore = {
-          A: pick.lore?.A || `The origins of this ${category} operative remain shrouded in mystery...`,
-          B: pick.lore?.B || `Through countless missions, this ally has proven their worth time and again...`,
-          C: pick.lore?.C || `At the pinnacle of their abilities, they stand as a legend among operatives...`
-        };
-      }
-      
-      STATE.characters[category] = {
-        name: pick.name, 
-        rarity: pick.rarity || "R", 
-        category, 
-        categoryXP: categoryXP,
-        image: pick.image,
-        lore: pick.lore,
-        unlockedTiers: [],
-        lastNotifiedTier: null
-      };
-      
-      addActivity(`Found ${pick.name}`, 0, "character_found");
-      toast(`🎉 <strong>Unlocked</strong>: ${pick.name} (<span class="pink">${pick.rarity}</span>)`);
+      // Mark as ready to open but don't actually unlock yet
+      STATE.readyToOpen = STATE.readyToOpen || {};
+      STATE.readyToOpen[category] = true;
       save();
+      renderSummary(); // Update the UI to show "Tap to open"
     }
+  }
+
+  function openGachaFor(category) {
+    // This is called when user taps the "Tap to open" tile
+    const availableChars = CHAR_POOL[category] || [];
+    let pick;
+    
+    if (availableChars.length > 0) {
+      // Random selection for the gacha unlock
+      pick = availableChars[Math.floor(Math.random() * availableChars.length)];
+    } else {
+      // Fallback if no characters available
+      pick = {
+        name: `${category} Ally`, 
+        image: defaultPortraitForCategory(category), 
+        rarity: "R", 
+        category,
+        lore: {
+          A: `The origins of this ${category} operative remain shrouded in mystery...`,
+          B: `Through countless missions, this ally has proven their worth time and again...`,
+          C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+        }
+      };
+    }
+    
+    // Ensure lore exists
+    if (!pick.lore) {
+      pick.lore = {
+        A: pick.lore?.A || `The origins of this ${category} operative remain shrouded in mystery...`,
+        B: pick.lore?.B || `Through countless missions, this ally has proven their worth time and again...`,
+        C: pick.lore?.C || `At the pinnacle of their abilities, they stand as a legend among operatives...`
+      };
+    }
+    
+    const categoryXP = getCategoryXP(category);
+    STATE.characters[category] = {
+      name: pick.name, 
+      rarity: pick.rarity || "R", 
+      category, 
+      categoryXP: categoryXP,
+      image: pick.image,
+      lore: pick.lore,
+      unlockedTiers: [],
+      lastNotifiedTier: null
+    };
+    
+    // Clear the ready to open state
+    if (STATE.readyToOpen && STATE.readyToOpen[category]) {
+      delete STATE.readyToOpen[category];
+    }
+    
+    addActivity(`Found ${pick.name}`, 0, "character_found");
+    save();
+    renderSummary();
+    renderCharacters();
+    
+    // Show gacha reveal lightbox (no toast)
+    const rarityColor = {R: '#9fb2c8', SR: '#ffe066', SSR: '#ff33cc'}[pick.rarity] || '#9fb2c8';
+    openLightbox(`
+      <div style="text-align: center;">
+        <h2 style="color: ${rarityColor}; margin-bottom: 16px;">🎉 Character Unlocked!</h2>
+        <img src="${pick.image}" alt="${pick.name}" 
+             style="max-width:200px;max-height:200px;border-radius:12px;object-fit:cover;object-position:top center;transform:scale(1.4);transform-origin:top center;" />
+        <h3 style="margin: 16px 0 8px 0;">${escapeHTML(pick.name)}</h3>
+        <p style="color: ${rarityColor}; font-weight: 600; font-size: 1.1em;">${pick.rarity} Rarity</p>
+        <p style="color: var(--muted); margin-top: 12px;">${category} Category</p>
+      </div>
+    `);
   }
 
   function renderCharacters(){
