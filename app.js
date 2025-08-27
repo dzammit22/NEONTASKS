@@ -67,7 +67,8 @@
       seedVersion: s.seedVersion || 0,
       meta: s.meta || { installedAt: Date.now(), completedCount: 0 },
       activity: s.activity || [],
-      categoryXP: s.categoryXP || {} // Track XP per category for unlocking
+      categoryXP: s.categoryXP || {},
+      readyToOpen: s.readyToOpen || {} // Add this state
     };
   }
   
