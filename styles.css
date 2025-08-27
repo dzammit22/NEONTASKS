@@ -1,4 +1,40 @@
-:root{
+/* XP indicators and gacha states in summary tiles */
+.xp-indicator { 
+  font-size: 0.75rem; 
+  margin-top: 2px; 
+  font-weight: 600; 
+  text-shadow: 0 0 8px rgba(0,255,240,.4);
+}
+.gacha-indicator {
+  font-size: 0.75rem; 
+  margin-top: 2px; 
+  font-weight: 700;
+  color: var(--yellow) !important;
+  text-shadow: 0 0 8px rgba(255,224,102,.6);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.tile.locked .xp-indicator {
+  color: #9fb3ff !important;
+  opacity: 0.8;
+}
+.tile:not(.locked) .xp-indicator {
+  color: var(--cyan) !important;
+}
+
+/* Ready to gacha state */
+.tile.ready-gacha {
+  border: 2px solid var(--yellow) !important;
+  box-shadow: 0 0 20px rgba(255,224,102,.4), 0 0 40px rgba(255,224,102,.2) !important;
+  animation: gacha-pulse 2s ease-in-out infinite;
+}
+@keyframes gacha-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,224,102,.4), 0 0 40px rgba(255,224,102,.2); }
+  :root{
   --bg:#0b0f1a;
   --bg2:#0d1222;
   --panel:#11162a;
