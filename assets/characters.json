@@ -1,0 +1,154 @@
+[
+  {
+    "ID": 101,
+    "Name/Title": "Aki – The Crimson Striker",
+    "Category": "Training",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ikA",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ikA tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 102,
+    "Name/Title": "Hana – The Aqua Flow",
+    "Category": "Training",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps anaH",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht anaH tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 103,
+    "Name/Title": "Daigo – The Pit Bull",
+    "Category": "Training",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ogiaD",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ogiaD tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 201,
+    "Name/Title": "Yumi – The Gothic Keeper",
+    "Category": "Home",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps imuY",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht imuY tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 202,
+    "Name/Title": "Kiko – The Golden Tactician",
+    "Category": "Home",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps okiK",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".syaw tsegnarts eht ni ytinamuh ym slaever ti tub ,etavirp si noissesbo sihT .timda I naht erom ytiC noeN ni efil ym otni seit ti dna ,serucidep ylkeew eroda I ,syad gnol retfa segassam evarc I .teef ym si ecnegludni tsetaerg ym :noissefnoC"
+  },
+  {
+    "ID": 203,
+    "Name/Title": "Ryo – The Fix‑Anything Punk",
+    "Category": "Home",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps oyR",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht oyR tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 301,
+    "Name/Title": "Tomo – The Masked Enforcer",
+    "Category": "Work",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps omoT",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht omoT tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 302,
+    "Name/Title": "Aya – The Holographic Vision",
+    "Category": "Work",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ayA",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ayA tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 303,
+    "Name/Title": "Shinji – The Projection Core",
+    "Category": "Work",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ijnihS",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ijnihS tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 401,
+    "Name/Title": "Erebus – Vault of Plenty",
+    "Category": "Finance",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps suberE",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht suberE tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 402,
+    "Name/Title": "Taro – The Verdant Auditor",
+    "Category": "Finance",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps oraT",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht oraT tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 403,
+    "Name/Title": "Nefra – The Feline Merchant",
+    "Category": "Finance",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps arfeN",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht arfeN tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 501,
+    "Name/Title": "Kyra “Deadlink” – The Chaotic Rogue",
+    "Category": "Skills",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ”knildaeD“ aryK",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ”knildaeD“ aryK tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 502,
+    "Name/Title": "Cinderjaw – The Blue-Flame Outlaw",
+    "Category": "Skills",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps wajredniC",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht wajredniC tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 503,
+    "Name/Title": "The Manga Archivist – Pagebound Ronin",
+    "Category": "Skills",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps tsivihcrA agnaM ehT",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht tsivihcrA agnaM ehT tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 601,
+    "Name/Title": "Thorn Duelist – Etched Oath",
+    "Category": "Rose Foundation",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps tsileuD nrohT",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht tsileuD nrohT tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 602,
+    "Name/Title": "Blooming Sovereign – CEO of Liberation",
+    "Category": "Rose Foundation",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps ngierevoS gnimoolB",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht ngierevoS gnimoolB tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 603,
+    "Name/Title": "Rose Revenant – Last Light",
+    "Category": "Rose Foundation",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps tnaneveR esoR",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht tnaneveR esoR tuoba sgniht llams—skriuq dna sterces peek I"
+  },
+  {
+    "ID": 9999,
+    "Name/Title": "The Glitching Wraith – “Loading…”",
+    "Category": "Unknown",
+    "Lore A (reversed)": ".enola enim si laog eurt ym ;em sepahs ytiC noeN .gnikaeps htiarW gnihctilG ehT",
+    "Lore B (reversed)": ".thgil emos ,yvaeh emos ,sdnob erom ro eerht dloh I .slavir dna seilla hguorht evaew seit yM",
+    "Lore C (reversed)": ".etaf gnignahc tuohtiw roloc dda taht htiarW gnihctilG ehT tuoba sgniht llams—skriuq dna sterces peek I"
+  }
+]
