@@ -10,17 +10,8 @@
 
   <!-- App Header -->
   <header class="app-header">
-    <div class="logo">NEON/<span>TASKS</span> <small>v0.4</small></div>
-
-    <div class="powerbar" aria-label="Power">
-      <div class="powerbar-label">
-        <span>Power</span>
-        <span id="power-perc">0%</span>
-      </div>
-      <div class="powerbar-outer">
-        <div id="powerbar-inner"></div>
-      </div>
-    </div>
+    <div class="logo">NEON/<span>TASKS</span> <small>v0.12</small></div>
+    <!-- Note: Removed global power bar - now character-specific -->
   </header>
 
   <!-- Tabs -->
@@ -30,7 +21,7 @@
     <button class="tab" data-tab="tasks"   aria-selected="false" role="tab">Tasks</button>
     <button class="tab" data-tab="calendar" aria-selected="false" role="tab">Calendar</button>
     <button class="tab" data-tab="characters" aria-selected="false" role="tab">Characters</button>
-    <button class="tab" data-tab="boss"    aria-selected="false" role="tab">Boss</button>
+    <!-- Note: Removed Boss tab as it's no longer relevant -->
     <button class="tab" data-tab="config"  aria-selected="false" role="tab">Config</button>
   </nav>
 
@@ -136,39 +127,6 @@
       <div id="chars-grid" class="chars-grid"></div>
     </section>
 
-    <!-- BOSS -->
-    <section id="view-boss" class="view" hidden>
-      <div class="card boss-card">
-        <div class="boss-head">
-          <h3>Monthly Boss</h3>
-          <span id="boss-meta" class="muted">Power 0 / 300</span>
-        </div>
-
-        <div class="powerbar" aria-label="Party charge">
-          <div class="powerbar-label">
-            <span>Party</span><span id="party-perc">0%</span>
-          </div>
-          <div class="powerbar-outer"><div id="party-inner"></div></div>
-        </div>
-
-        <div class="boss-stats">
-          <div>Target: <strong id="boss-target">300</strong></div>
-          <div>Win chance: <strong id="boss-chance">0%</strong></div>
-        </div>
-
-        <div class="actions">
-          <button id="btn-simulate" class="btn primary">Fight!</button>
-        </div>
-
-        <div id="boss-result" class="boss-result"></div>
-      </div>
-
-      <div class="card">
-        <h3>Activity breakdown</h3>
-        <div id="activity-list"></div>
-      </div>
-    </section>
-
     <!-- CONFIG -->
     <section id="view-config" class="view" hidden>
       <div class="card">
@@ -194,14 +152,39 @@
       </div>
 
       <div class="card">
-        <h3>Boss target</h3>
+        <h3>Character unlock threshold</h3>
+        <p class="muted">XP needed to unlock character (gacha mechanic)</p>
         <div class="row">
           <div class="field">
-            <label for="boss-target-input">Target XP</label>
-            <input id="boss-target-input" type="number" min="10" step="10" />
+            <label for="unlock-threshold-input">Unlock XP</label>
+            <input id="unlock-threshold-input" type="number" min="10" step="10" />
           </div>
           <div class="actions">
-            <button id="apply-target" class="btn primary">Apply</button>
+            <button id="apply-unlock-threshold" class="btn primary">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Tier thresholds</h3>
+        <p class="muted">XP needed to unlock each character tier</p>
+        <div class="row">
+          <div class="field">
+            <label for="tier-a-input">Tier A XP</label>
+            <input id="tier-a-input" type="number" min="10" step="10" />
+          </div>
+          <div class="field">
+            <label for="tier-b-input">Tier B XP</label>
+            <input id="tier-b-input" type="number" min="50" step="10" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="tier-c-input">Tier C XP</label>
+            <input id="tier-c-input" type="number" min="100" step="10" />
+          </div>
+          <div class="actions">
+            <button id="apply-tier-thresholds" class="btn primary">Apply</button>
           </div>
         </div>
       </div>
@@ -211,9 +194,9 @@
         <div class="row">
           <button id="seed-demo" class="btn">Seed demo data</button>
 
-          <button id="export-completed" class="btn">Export completed (JSON)</button>
+          <button id="export-completed" class="btn">Export full backup</button>
 
-          <button id="import-completed" class="btn">Import completed</button>
+          <button id="import-completed" class="btn">Import backup</button>
           <input id="import-completed-file" type="file" accept="application/json,.json" style="display:none" />
 
           <button id="reset-all" class="btn danger">Reset all</button>
@@ -240,7 +223,7 @@
         <div id="a-category-pills" class="pill-select"></div>
       </div>
 
-      <!-- Portrait preview (you hid via CSS, kept for compatibility) -->
+      <!-- Portrait preview (hidden via CSS, kept for compatibility) -->
       <div id="a-character-preview" class="char-preview"></div>
 
       <div class="row">
@@ -311,16 +294,16 @@
 
   <script src="app.js" defer></script>
 
-<!-- Confirm Reset Dialog (needed by app.js -> setupReset) -->
-<dialog id="confirm-reset" aria-labelledby="confirm-reset-title" aria-modal="true">
-  <div>
-    <h3 id="confirm-reset-title">Reset all data?</h3>
-    <p class="muted">This will erase all tasks, characters, settings, and activity from this device.</p>
-    <div class="dialog-actions">
-      <button id="reset-cancel-btn" class="btn" type="button">Cancel</button>
-      <button id="reset-confirm-btn" class="btn danger" type="button">Yes, reset everything</button>
+  <!-- Confirm Reset Dialog (needed by app.js -> setupReset) -->
+  <dialog id="confirm-reset" aria-labelledby="confirm-reset-title" aria-modal="true">
+    <div>
+      <h3 id="confirm-reset-title">Reset all data?</h3>
+      <p class="muted">This will erase all tasks, characters, category XP, settings, and activity from this device.</p>
+      <div class="dialog-actions">
+        <button id="reset-cancel-btn" class="btn" type="button">Cancel</button>
+        <button id="reset-confirm-btn" class="btn danger" type="button">Yes, reset everything</button>
+      </div>
     </div>
-  </div>
-</dialog>
+  </dialog>
 </body>
 </html>
