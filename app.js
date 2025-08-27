@@ -321,7 +321,11 @@
     for(const cat of CATEGORIES){
       const list = pool[cat] || [];
       if(list.length){
-        chosen[cat] = list[Math.floor(Math.random()*list.length)];
+        // Use a seeded random selection for consistency across page reloads
+        // Based on category name to ensure same character is always picked for previews
+        const seed = cat.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const index = seed % list.length;
+        chosen[cat] = list[index];
       }else{
         chosen[cat] = { 
           category:cat, 
@@ -470,9 +474,16 @@
     grid.innerHTML = cats.map(cat=>{
       const unlocked = isUnlocked(cat);
       const categoryXP = getCategoryXP(cat);
-      const portrait = unlocked
-        ? (STATE.characters[cat]?.image || defaultPortraitForCategory(cat))
-        : placeholderPortraitForCategory(cat);
+      
+      // For consistency, always use the unlocked character's image if available
+      let portrait;
+      if (unlocked) {
+        portrait = STATE.characters[cat]?.image || defaultPortraitForCategory(cat);
+      } else {
+        // Show preview of what will be unlocked (consistent session character)
+        const previewChar = SESSION_CHAR[cat];
+        portrait = previewChar?.image || placeholderPortraitForCategory(cat);
+      }
         
       const progressText = unlocked 
         ? `${categoryXP} XP`
@@ -505,9 +516,11 @@
         } else {
           const categoryXP = getCategoryXP(cat);
           const needed = STATE.config.characterUnlockThreshold - categoryXP;
+          const previewChar = SESSION_CHAR[cat];
+          const previewName = previewChar?.name || `${cat} Ally`;
           openLightbox(`
             <h3>${cat} Character Locked</h3>
-            <p class="muted">Complete <strong>${cat}</strong> tasks to unlock this ally.</p>
+            <p class="muted">Complete <strong>${cat}</strong> tasks to unlock <strong>${previewName}</strong>.</p>
             <p><strong>Progress:</strong> ${categoryXP}/${STATE.config.characterUnlockThreshold} XP</p>
             ${needed > 0 ? `<p class="muted">Need ${needed} more XP to unlock</p>` : ""}
           `);
@@ -952,21 +965,43 @@
     
     // Check if we should unlock the character (gacha mechanic trigger)
     if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
-      const pick = SESSION_CHAR[category] || {
-        name:`${category} Ally`, 
-        image: defaultPortraitForCategory(category), 
-        rarity:"R", 
-        category,
-        lore: {
-          A: `The origins of this ${category} operative remain shrouded in mystery...`,
-          B: `Through countless missions, this ally has proven their worth time and again...`,
-          C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+      // Use SESSION_CHAR for consistency, but ensure we have a valid character
+      let pick = SESSION_CHAR[category];
+      
+      // If no session character or it doesn't have the required fields, create a fallback
+      if (!pick || !pick.name || !pick.image) {
+        const pool = CHAR_POOL[category] || [];
+        if (pool.length > 0) {
+          // Pick the first character from the pool for consistency
+          pick = pool[0];
+        } else {
+          // Fallback to generated character
+          pick = {
+            name: `${category} Ally`, 
+            image: defaultPortraitForCategory(category), 
+            rarity: "R", 
+            category,
+            lore: {
+              A: `The origins of this ${category} operative remain shrouded in mystery...`,
+              B: `Through countless missions, this ally has proven their worth time and again...`,
+              C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+            }
+          };
         }
-      };
+      }
+      
+      // Ensure lore exists
+      if (!pick.lore) {
+        pick.lore = {
+          A: pick.lore?.A || `The origins of this ${category} operative remain shrouded in mystery...`,
+          B: pick.lore?.B || `Through countless missions, this ally has proven their worth time and again...`,
+          C: pick.lore?.C || `At the pinnacle of their abilities, they stand as a legend among operatives...`
+        };
+      }
       
       STATE.characters[category] = {
         name: pick.name, 
-        rarity: pick.rarity, 
+        rarity: pick.rarity || "R", 
         category, 
         categoryXP: categoryXP,
         image: pick.image,
@@ -974,6 +1009,9 @@
         unlockedTiers: [],
         lastNotifiedTier: null
       };
+      
+      // Update SESSION_CHAR to match what we just unlocked for consistency
+      SESSION_CHAR[category] = pick;
       
       addActivity(`Found ${pick.name}`, 0, "character_found");
       toast(`🎉 <strong>Unlocked</strong>: ${pick.name} (<span class="pink">${pick.rarity}</span>)`);
