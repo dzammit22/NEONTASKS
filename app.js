@@ -1,11 +1,9 @@
-/* NEON/TASKS v0.11 — import/export completed tasks
-   - Summary activity tidy (one-line)
-   - Calendar neon-dots
-   - Characters: locked placeholders
-   - CSV loader w/ fallback
-   - Added completedAt timestamp on finish
-   - Export/Import completed tasks (JSON)
-   - Preserves existing localStorage (v0.7 key)
+/* NEON/TASKS v0.12 — Character-focused progression with tiers and lore
+   - Removed global power system
+   - Character-specific XP progression with Tier A/B/C
+   - Lore rewards from CSV columns (Lore_A, Lore_B, Lore_C)
+   - Character unlock threshold before progression begins
+   - Text A/B/C buttons replace Chat/Train/Gift
 */
 
 (() => {
@@ -18,7 +16,8 @@
   const DEFAULT_CONFIG = {
     xpPreset: "Default",
     scale: "Linear",
-    bossTarget: 300,
+    characterUnlockThreshold: 50, // XP needed to unlock character initially
+    tierThresholds: { A: 100, B: 250, C: 500 }, // XP needed for each tier
     weights: { priority: { Low:1, Medium:2, High:3 }, estHour: 1, streak: 0.5 }
   };
   const CSV_TO_APP_CATEGORY = {
@@ -31,6 +30,9 @@
     "Unknown": "Other"
   };
 
+  // Character tier labels
+  const TIER_LABELS = { A: "Tier A", B: "Tier B", C: "Tier C" };
+
   // ---------- State ----------
   let SESSION_CHAR = {};   // per-run random pick per category (for previews)
   let CHAR_POOL = {};      // full CSV pool by category
@@ -42,21 +44,35 @@
   function loadState() {
     let s;
     try { s = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { s = {}; }
+    
+    // Migrate old character structure if needed
+    if (s.characters) {
+      for (const [cat, char] of Object.entries(s.characters)) {
+        if (!char.categoryXP) {
+          char.categoryXP = char.xp || 0;
+          char.unlockedTiers = char.unlockedTiers || [];
+          // If character exists, they're already unlocked
+          if (char.categoryXP < DEFAULT_CONFIG.characterUnlockThreshold) {
+            char.categoryXP = DEFAULT_CONFIG.characterUnlockThreshold;
+          }
+        }
+      }
+    }
+    
     return {
       tasks: s.tasks || [],
       characters: s.characters || {},
       config: s.config || deepClone(DEFAULT_CONFIG),
-      power: s.power || 0,
       calendarCursor: s.calendarCursor || todayStr().slice(0,7),
       seedVersion: s.seedVersion || 0,
       meta: s.meta || { installedAt: Date.now(), completedCount: 0 },
-      activity: s.activity || []
+      activity: s.activity || [],
+      categoryXP: s.categoryXP || {} // Track XP per category for unlocking
     };
   }
   
   function save() {
     localStorage.setItem(LS_KEY, JSON.stringify(STATE));
-    renderHeaderPower();
   }
   
   ACTIVITY = STATE.activity || [];
@@ -152,6 +168,29 @@
 
   function isUnlocked(cat){ return !!STATE.characters[cat]; }
 
+  function getCategoryXP(cat) {
+    return STATE.categoryXP[cat] || 0;
+  }
+
+  function getCharacterTier(char) {
+    const xp = char.categoryXP || 0;
+    const thresholds = STATE.config.tierThresholds;
+    if (xp >= thresholds.C) return 'C';
+    if (xp >= thresholds.B) return 'B';
+    if (xp >= thresholds.A) return 'A';
+    return null;
+  }
+
+  function getUnlockedTiers(char) {
+    const xp = char.categoryXP || 0;
+    const thresholds = STATE.config.tierThresholds;
+    const unlocked = [];
+    if (xp >= thresholds.A) unlocked.push('A');
+    if (xp >= thresholds.B) unlocked.push('B');
+    if (xp >= thresholds.C) unlocked.push('C');
+    return unlocked;
+  }
+
   // ---------- CSV Helpers ----------
   function parseCSV(text) {
     const rows = [];
@@ -198,7 +237,10 @@
         cat: header.findIndex(h => h && /category/i.test(h.trim())),
         img: header.findIndex(h => h && /image/i.test(h.trim())), 
         name: header.findIndex(h => h && /name.*title|title.*name|name/i.test(h.trim())),
-        rarity: header.findIndex(h => h && /rarity/i.test(h.trim()))
+        rarity: header.findIndex(h => h && /rarity/i.test(h.trim())),
+        loreA: header.findIndex(h => h && /lore_a/i.test(h.trim())),
+        loreB: header.findIndex(h => h && /lore_b/i.test(h.trim())),
+        loreC: header.findIndex(h => h && /lore_c/i.test(h.trim()))
       };
       
       console.log("Column indices:", idx);
@@ -217,6 +259,9 @@
         const rawName = cols[idx.name] ? cols[idx.name].toString().trim() : "";
         const rawImg = cols[idx.img] ? cols[idx.img].toString().trim() : "";
         const rawRarity = cols[idx.rarity] ? cols[idx.rarity].toString().trim() : "R";
+        const loreA = cols[idx.loreA] ? cols[idx.loreA].toString().trim() : "";
+        const loreB = cols[idx.loreB] ? cols[idx.loreB].toString().trim() : "";
+        const loreC = cols[idx.loreC] ? cols[idx.loreC].toString().trim() : "";
         
         if (!csvCategory || csvCategory === "Unknown") continue;
         
@@ -234,7 +279,8 @@
           category: cat,
           image: chosen,
           name: rawName || `${cat} Ally`,
-          rarity: rawRarity || "R"
+          rarity: rawRarity || "R",
+          lore: { A: loreA, B: loreB, C: loreC }
         };
         
         if (!byCat[cat]) byCat[cat] = [];
@@ -257,7 +303,12 @@
           category: cat,
           image: `assets/characters/${slug}/${slug}-${n}.png`,
           name: `${cat} Operative ${n}`,
-          rarity: ["R","SR","SSR"][n-1] || "R"
+          rarity: ["R","SR","SSR"][n-1] || "R",
+          lore: {
+            A: `The origins of this ${cat} operative remain shrouded in mystery...`,
+            B: `Through countless missions, this ally has proven their worth time and again...`,
+            C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+          }
         }));
       }
       return byCat;
@@ -272,7 +323,17 @@
       if(list.length){
         chosen[cat] = list[Math.floor(Math.random()*list.length)];
       }else{
-        chosen[cat] = { category:cat, image: defaultPortraitForCategory(cat), name: `${cat} Ally`, rarity: "R" };
+        chosen[cat] = { 
+          category:cat, 
+          image: defaultPortraitForCategory(cat), 
+          name: `${cat} Ally`, 
+          rarity: "R",
+          lore: {
+            A: `The origins of this ${cat} operative remain shrouded in mystery...`,
+            B: `Through countless missions, this ally has proven their worth time and again...`,
+            C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+          }
+        };
       }
     }
     return chosen;
@@ -302,12 +363,11 @@
   }
 
   function renderAll(){
-    renderHeaderPower();
     renderSummary();
     renderTasks();
     renderCalendar();
     renderCharacters();
-    renderBoss();
+    // Note: renderBoss removed as we no longer have global power
   }
 
   // ---------- Toasts & Lightbox ----------
@@ -346,12 +406,11 @@
         if(id==="summary") renderSummary();
         if(id==="characters") renderCharacters();
         if(id==="calendar") renderCalendar();
-        if(id==="boss") renderBoss();
       });
     });
   }
 
-  // ---------- Power & XP ----------
+  // ---------- XP System ----------
   function computeTaskXP(t){
     const pr = priorityScore(t.priority);
     const est = Number(t.estimate || 0);
@@ -366,19 +425,28 @@
     return Math.max(1, Math.round(base));
   }
 
-  function addPower(xp){
-    STATE.power += xp;
+  function addCategoryXP(category, xp){
+    if (!STATE.categoryXP[category]) STATE.categoryXP[category] = 0;
+    STATE.categoryXP[category] += xp;
+    
+    // If character is unlocked, add XP to them too
+    if (STATE.characters[category]) {
+      STATE.characters[category].categoryXP = (STATE.characters[category].categoryXP || 0) + xp;
+      
+      // Check for tier unlocks
+      const char = STATE.characters[category];
+      const unlockedTiers = getUnlockedTiers(char);
+      const currentTier = getCharacterTier(char);
+      
+      // If we just unlocked a new tier
+      if (currentTier && (!char.lastNotifiedTier || char.lastNotifiedTier !== currentTier)) {
+        char.lastNotifiedTier = currentTier;
+        toast(`🌟 <strong>${char.name}</strong> reached <span class="yellow">${TIER_LABELS[currentTier]}</span>!`);
+        addActivity(`${char.name} reached ${TIER_LABELS[currentTier]}`, 0, "tier_unlock");
+      }
+    }
+    
     save();
-    renderHeaderPower();
-  }
-
-  function renderHeaderPower(){
-    const pctEl = document.getElementById("power-perc");
-    const bar = document.getElementById("powerbar-inner");
-    if(!pctEl || !bar) return;
-    const pct = clamp(Math.round( (STATE.power % STATE.config.bossTarget) / STATE.config.bossTarget * 100 ), 0, 100);
-    pctEl.textContent = `${pct}%`;
-    bar.style.width = `${pct}%`;
   }
 
   // ---------- Activity ----------
@@ -401,13 +469,21 @@
     const cats = CATEGORIES.filter(c => c !== "Other");
     grid.innerHTML = cats.map(cat=>{
       const unlocked = isUnlocked(cat);
+      const categoryXP = getCategoryXP(cat);
       const portrait = unlocked
         ? (STATE.characters[cat]?.image || defaultPortraitForCategory(cat))
         : placeholderPortraitForCategory(cat);
+        
+      const progressText = unlocked 
+        ? `${categoryXP} XP`
+        : `${categoryXP}/${STATE.config.characterUnlockThreshold} XP`;
+        
       return `
         <button class="tile ${unlocked? "" : "locked"}" data-cat="${cat}" aria-label="${cat} ${unlocked?'portrait':'locked'}">
           <img alt="" src="${portrait}">
-          <div class="label">${cat}</div>
+          <div class="label">${cat}
+            <div class="xp-indicator">${progressText}</div>
+          </div>
         </button>`;
     }).join("");
 
@@ -416,9 +492,25 @@
         const cat = btn.dataset.cat;
         if (isUnlocked(cat)) {
           const img = STATE.characters[cat]?.image || defaultPortraitForCategory(cat);
-          openLightbox(`<img src="${img}" alt="${cat} portrait" style="max-width:100%;border-radius:12px" />`);
+          const char = STATE.characters[cat];
+          const tier = getCharacterTier(char);
+          const tierText = tier ? ` (${TIER_LABELS[tier]})` : " (No Tier)";
+          openLightbox(`
+            <div style="text-align: center;">
+              <img src="${img}" alt="${cat} portrait" style="max-width:100%;max-height:300px;border-radius:12px" />
+              <h3>${char.name}${tierText}</h3>
+              <p><strong>${char.categoryXP || 0} XP</strong> · ${cat} Category</p>
+            </div>
+          `);
         } else {
-          openLightbox(`<h3>${cat} Character Locked</h3><p class="muted">Complete a <strong>${cat}</strong> task to unlock this ally.</p>`);
+          const categoryXP = getCategoryXP(cat);
+          const needed = STATE.config.characterUnlockThreshold - categoryXP;
+          openLightbox(`
+            <h3>${cat} Character Locked</h3>
+            <p class="muted">Complete <strong>${cat}</strong> tasks to unlock this ally.</p>
+            <p><strong>Progress:</strong> ${categoryXP}/${STATE.config.characterUnlockThreshold} XP</p>
+            ${needed > 0 ? `<p class="muted">Need ${needed} more XP to unlock</p>` : ""}
+          `);
         }
       });
     });
@@ -430,6 +522,7 @@
       s.textContent = `
         #view-summary{ display:grid; gap:18px; }
         .summary-grid{ margin-bottom:6px; }
+        .xp-indicator { font-size: 0.75rem; color: var(--cyan); margin-top: 2px; font-weight: 600; }
       `;
       document.head.appendChild(s);
     }
@@ -447,8 +540,7 @@
       switch(kind){
         case "character_found": return "🎉";
         case "task_completed":  return "⚡";
-        case "boss_win":        return "🧨";
-        case "boss_loss":       return "💀";
+        case "tier_unlock":     return "🌟";
         default: return "•";
       }
     };
@@ -645,12 +737,14 @@
     t.completedAt = new Date().toISOString();
     STATE.meta.completedCount++;
     const xp = computeTaskXP(t);
-    addPower(xp);
+    
+    addCategoryXP(t.category, xp);
     addActivity(`Completed: ${t.title}`, xp, "task_completed");
     unlockCharacterMaybe(t.category, xp);
+    
     toast(`⚡ <strong>Completed</strong>: ${escapeHTML(t.title)} <span class="muted">(+${xp} XP)</span>`);
     save();
-    renderCharacters(); renderBoss(); renderCalendar(); renderSummary();
+    renderCharacters(); renderCalendar(); renderSummary();
   }
 
   function deleteTask(id){ STATE.tasks = STATE.tasks.filter(x=>x.id!==id); save(); }
@@ -854,25 +948,35 @@
 
   // ---------- Characters ----------
   function unlockCharacterMaybe(category, xpGained){
-    if(!STATE.characters[category]){
+    const categoryXP = getCategoryXP(category);
+    
+    // Check if we should unlock the character (gacha mechanic trigger)
+    if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
       const pick = SESSION_CHAR[category] || {
-        name:`${category} Ally`, image: defaultPortraitForCategory(category), rarity:"R", category
+        name:`${category} Ally`, 
+        image: defaultPortraitForCategory(category), 
+        rarity:"R", 
+        category,
+        lore: {
+          A: `The origins of this ${category} operative remain shrouded in mystery...`,
+          B: `Through countless missions, this ally has proven their worth time and again...`,
+          C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+        }
       };
+      
       STATE.characters[category] = {
-        name: pick.name, rarity: pick.rarity, category, level:1, bond: 0,
-        xp: 0, xpToNext: 100, image: pick.image
+        name: pick.name, 
+        rarity: pick.rarity, 
+        category, 
+        categoryXP: categoryXP,
+        image: pick.image,
+        lore: pick.lore,
+        unlockedTiers: [],
+        lastNotifiedTier: null
       };
+      
       addActivity(`Found ${pick.name}`, 0, "character_found");
       toast(`🎉 <strong>Unlocked</strong>: ${pick.name} (<span class="pink">${pick.rarity}</span>)`);
-    }
-    const ch = STATE.characters[category];
-    if(ch){
-      ch.xp += Math.floor(xpGained*0.6);
-      ch.bond = clamp(ch.bond + Math.floor(xpGained*0.2), 0, 100);
-      while(ch.xp >= ch.xpToNext){
-        ch.xp -= ch.xpToNext; ch.level++; ch.xpToNext = Math.round(ch.xpToNext*1.25);
-        toast(`⬆️ <strong>${ch.name}</strong> reached <span class="yellow">Lv.${ch.level}</span>`);
-      }
       save();
     }
   }
@@ -884,9 +988,17 @@
     if(!grid) return;
 
     const items = CATEGORIES.map(cat => {
+      const categoryXP = getCategoryXP(cat);
+      
       if (isUnlocked(cat)) {
         const ch = STATE.characters[cat];
         const imagePath = ch.image || defaultPortraitForCategory(cat);
+        const tier = getCharacterTier(ch);
+        const unlockedTiers = getUnlockedTiers(ch);
+        const nextTier = tier === 'C' ? null : (tier === 'B' ? 'C' : (tier === 'A' ? 'B' : 'A'));
+        const nextThreshold = nextTier ? STATE.config.tierThresholds[nextTier] : null;
+        const progress = nextThreshold ? Math.round((ch.categoryXP / nextThreshold) * 100) : 100;
+        
         return `<div class="char-card">
           <div class="char-portrait">
             <img alt="${escapeHTML(ch.name)} portrait" src="${imagePath}"
@@ -897,33 +1009,43 @@
               <div><strong>${escapeHTML(ch.name)}</strong> <span class="muted">(${ch.rarity})</span></div>
               <div class="muted">${cat}</div>
             </div>
-            <div>Level: <strong>${ch.level}</strong> · Bond: <strong>${ch.bond}%</strong></div>
-            <div class="progress" aria-label="XP"><div style="width:${Math.round(ch.xp/ch.xpToNext*100)}%"></div></div>
-            <div class="flex">
-              <button class="btn" data-chat="${cat}">Chat</button>
-              <button class="btn" data-train="${cat}">Train</button>
-              <button class="btn" data-gift="${cat}">Gift</button>
+            <div>XP: <strong>${ch.categoryXP || 0}</strong> · Tier: <strong>${tier ? TIER_LABELS[tier] : 'None'}</strong></div>
+            <div class="progress" aria-label="Tier Progress">
+              <div style="width:${progress}%"></div>
+            </div>
+            <div class="flex tier-buttons">
+              ${['A', 'B', 'C'].map(t => `
+                <button class="btn tier-btn" data-tier="${t}" data-char="${cat}" 
+                        ${unlockedTiers.includes(t) ? '' : 'disabled'}>
+                  Text ${t}
+                </button>
+              `).join('')}
             </div>
           </div>
         </div>`;
       } else {
         const imagePath = placeholderPortraitForCategory(cat);
+        const needed = STATE.config.characterUnlockThreshold - categoryXP;
+        const progress = Math.round((categoryXP / STATE.config.characterUnlockThreshold) * 100);
+        
         return `<div class="char-card locked" data-locked="${cat}">
           <div class="char-portrait">
             <img alt="${cat} locked placeholder" src="${imagePath}">
-            <div class="lock-overlay">Complete a ${cat} task to unlock</div>
+            <div class="lock-overlay">
+              ${needed > 0 ? `${needed} XP to unlock` : 'Ready to unlock!'}
+            </div>
           </div>
           <div class="char-body">
             <div class="flex" style="justify-content:space-between">
               <div><strong>${cat} Ally</strong> <span class="muted">(Locked)</span></div>
               <div class="muted">${cat}</div>
             </div>
-            <div class="muted">No XP yet. Earn XP by completing ${cat} tasks.</div>
-            <div class="progress" aria-label="XP"><div style="width:0%"></div></div>
+            <div class="muted">Progress: ${categoryXP}/${STATE.config.characterUnlockThreshold} XP</div>
+            <div class="progress" aria-label="Unlock Progress">
+              <div style="width:${progress}%"></div>
+            </div>
             <div class="flex">
-              <button class="btn" disabled>Chat</button>
-              <button class="btn" disabled>Train</button>
-              <button class="btn" disabled>Gift</button>
+              <button class="btn" disabled>Complete tasks to unlock</button>
             </div>
           </div>
         </div>`;
@@ -933,94 +1055,184 @@
     grid.innerHTML = items.join("");
     if(empty) empty.style.display = "none";
     
-    // Wire actions
-    grid.querySelectorAll("[data-chat]").forEach(b=> b.addEventListener("click", ()=>{
-      const cat = b.getAttribute("data-chat");
-      const ch = STATE.characters[cat];
-      const lines = [
-        `"Stay sharp. Every checkbox is a blade."`,
-        `"Neon nights favor the disciplined."`,
-        `"Your grind fuels our power core."`,
-        `"Focus fire: one task at a time."`
-      ];
-      openLightbox(`<h3>${escapeHTML(ch.name)} · Chat</h3><p class="muted">${lines[Math.floor(Math.random()*lines.length)]}</p>`);
-    }));
-    grid.querySelectorAll("[data-train]").forEach(b=> b.addEventListener("click", ()=>{
-      const cat = b.getAttribute("data-train"); const ch = STATE.characters[cat];
-      ch.xp += 20; toast(`🏋️ Trained <strong>${escapeHTML(ch.name)}</strong> (+20 XP)`);
-      while(ch.xp >= ch.xpToNext){ ch.xp -= ch.xpToNext; ch.level++; ch.xpToNext=Math.round(ch.xpToNext*1.25); toast(`⬆️ ${escapeHTML(ch.name)} Lv.${ch.level}`); }
-      save(); renderCharacters();
-    }));
-    grid.querySelectorAll("[data-gift]").forEach(b=> b.addEventListener("click", ()=>{
-      const cat = b.getAttribute("data-gift"); const ch = STATE.characters[cat];
-      ch.bond = clamp(ch.bond + 5, 0, 100);
-      toast(`🎁 Bond with <strong>${escapeHTML(ch.name)}</strong> +5`);
-      save(); renderCharacters();
-    }));
+    // Wire tier button actions
+    grid.querySelectorAll(".tier-btn:not([disabled])").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tier = btn.getAttribute("data-tier");
+        const cat = btn.getAttribute("data-char");
+        const char = STATE.characters[cat];
+        
+        if (!char || !char.lore || !char.lore[tier]) {
+          openLightbox(`<h3>Lore Unavailable</h3><p class="muted">No lore text available for this tier.</p>`);
+          return;
+        }
+        
+        const imagePath = char.image || defaultPortraitForCategory(cat);
+        openLightbox(`
+          <div style="text-align: center;">
+            <img src="${imagePath}" alt="${char.name} portrait" 
+                 style="max-width:200px;max-height:200px;border-radius:12px;object-fit:cover;object-position:top center;transform:scale(1.7);transform-origin:top center;" />
+            <h3>${char.name} - ${TIER_LABELS[tier]}</h3>
+            <p style="text-align: left; line-height: 1.6; color: #e6f1ff; max-width: 400px; margin: 0 auto;">
+              ${escapeHTML(char.lore[tier])}
+            </p>
+          </div>
+        `);
+      });
+    });
   }
 
-  // ---------- Boss ----------
-  function renderBoss(){
-    const targetEl = document.getElementById("boss-target");
-    const metaEl = document.getElementById("boss-meta");
-    const chanceEl = document.getElementById("boss-chance");
-    const inner = document.getElementById("party-inner");
-    const perc = document.getElementById("party-perc");
-    const power = STATE.power % STATE.config.bossTarget;
-    const pct = clamp(Math.round(power / STATE.config.bossTarget * 100), 0, 100);
-    if(targetEl) targetEl.textContent = STATE.config.bossTarget;
-    if(metaEl) metaEl.textContent = `Power ${power} / ${STATE.config.bossTarget}`;
-    if(chanceEl) chanceEl.textContent = `${Math.min(99, Math.max(1, Math.round(pct*0.9)))}%`;
-    if(inner) inner.style.width = `${pct}%`;
-    if(perc) perc.textContent = `${pct}%`;
-
-    const btn = document.getElementById("btn-simulate");
-    const res = document.getElementById("boss-result");
-    if(btn && res){
-      btn.onclick = ()=>{
-        const rng = Math.random()*100;
-        const winChance = Math.min(99, Math.max(1, Math.round(pct*0.9)));
-        const win = rng < winChance;
-        if(win){
-          addActivity("Defeated the monthly boss!", 0, "boss_win");
-          toast("🧨 <strong>Boss defeated!</strong>");
-          res.innerHTML = `<div class="green">Victory! Your team crushed the boss.</div>`;
+  // ---------- Config ----------
+  function setupConfig(){
+    const preset = document.getElementById("xp-preset");
+    const scale = document.getElementById("xp-scale");
+    const unlockThreshold = document.getElementById("unlock-threshold-input");
+    const applyUnlock = document.getElementById("apply-unlock-threshold");
+    const tierAInput = document.getElementById("tier-a-input");
+    const tierBInput = document.getElementById("tier-b-input");
+    const tierCInput = document.getElementById("tier-c-input");
+    const applyTiers = document.getElementById("apply-tier-thresholds");
+    
+    if(preset){ 
+      preset.value = STATE.config.xpPreset; 
+      preset.addEventListener("change", ()=>{
+        STATE.config.xpPreset = preset.value;
+        if(preset.value === "Aggressive"){
+          STATE.config.weights.priority = { Low:1, Medium:3, High:5 };
+          STATE.config.weights.estHour = 2;
+        }else if(preset.value === "Gentle"){
+          STATE.config.weights.priority = { Low:1, Medium:2, High:2 };
+          STATE.config.weights.estHour = 0.5;
         }else{
-          addActivity("Lost to the monthly boss…", 0, "boss_loss");
-          res.innerHTML = `<div class="muted">Close! Train up and try again.</div>`;
+          STATE.config.weights.priority = deepClone(DEFAULT_CONFIG.weights.priority);
+          STATE.config.weights.estHour = 1;
         }
-        renderSummary();
-      };
+        save();
+      });
+    }
+    
+    if(scale){ 
+      scale.value = STATE.config.scale; 
+      scale.addEventListener("change", ()=>{ STATE.config.scale = scale.value; save(); }); 
+    }
+    
+    if(unlockThreshold){ unlockThreshold.value = STATE.config.characterUnlockThreshold; }
+    if(applyUnlock){ 
+      applyUnlock.addEventListener("click", ()=>{ 
+        const v = Number(unlockThreshold.value||0); 
+        if(v>=10){ 
+          STATE.config.characterUnlockThreshold = v; 
+          save(); 
+          renderSummary();
+          renderCharacters();
+          toast("Applied unlock threshold"); 
+        } 
+      }); 
     }
 
-    const list = document.getElementById("activity-list");
-    if(list){
-      const byKind = {};
-      for(const a of STATE.activity){ byKind[a.kind] = (byKind[a.kind]||0)+1; }
-      list.innerHTML = Object.entries(byKind).map(([k,v])=>`<div>${k}: <strong>${v}</strong></div>`).join("") || `<div class="muted">No activity yet.</div>`;
+    if(tierAInput) tierAInput.value = STATE.config.tierThresholds.A;
+    if(tierBInput) tierBInput.value = STATE.config.tierThresholds.B;
+    if(tierCInput) tierCInput.value = STATE.config.tierThresholds.C;
+    
+    if(applyTiers){
+      applyTiers.addEventListener("click", ()=>{
+        const a = Number(tierAInput.value || 0);
+        const b = Number(tierBInput.value || 0);
+        const c = Number(tierCInput.value || 0);
+        if(a > 0 && b > a && c > b){
+          STATE.config.tierThresholds = { A: a, B: b, C: c };
+          save();
+          renderCharacters();
+          toast("Applied tier thresholds");
+        } else {
+          toast("Invalid tier values - must be A < B < C");
+        }
+      });
+    }
+
+    // Import/Export buttons
+    const exportBtn = document.getElementById("export-completed");
+    const importBtn = document.getElementById("import-completed");
+    const importFile = document.getElementById("import-completed-file");
+    
+    if(exportBtn) {
+      exportBtn.textContent = "Export Full Backup";
+      exportBtn.addEventListener("click", exportFullBackup);
+    }
+    
+    if(importBtn && importFile){
+      importBtn.textContent = "Import Full Backup";
+      
+      importBtn.addEventListener("click", ()=> importFile.click());
+      importFile.addEventListener("change", async ()=>{
+        const file = importFile.files?.[0];
+        if(!file) return;
+        
+        const confirmed = confirm(
+          "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
+          "This will COMPLETELY REPLACE all your current data including:\n" +
+          "• All tasks (completed and pending)\n" +
+          "• All unlocked characters and their levels\n" +
+          "• All category XP\n" +
+          "• All settings and configuration\n" +
+          "• All activity history\n\n" +
+          "Are you sure you want to proceed?\n\n" +
+          "(Consider exporting your current data first as a backup)"
+        );
+        
+        if (!confirmed) {
+          importFile.value = "";
+          return;
+        }
+        
+        try{
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          
+          if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
+            importFullBackup(parsed);
+          } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
+            const added = importCompletedTasksFromJSON(parsed);
+            toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
+            renderAll();
+          } else if (Array.isArray(parsed)) {
+            const added = importCompletedTasksFromJSON(parsed);
+            toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
+            renderAll();
+          } else {
+            throw new Error("Unrecognized backup format");
+          }
+          
+        }catch(e){
+          console.error("Import error:", e);
+          toast(`<span class="danger">Import failed: ${e.message}</span>`);
+        }finally{
+          importFile.value = "";
+        }
+      });
     }
   }
 
   // ---------- Export/Import Functions ----------
   function exportFullBackup(){
     const fullBackup = {
-      version: "neon-tasks-full-backup/v1",
+      version: "neon-tasks-full-backup/v2",
       exportedAt: new Date().toISOString(),
-      appVersion: "0.11",
+      appVersion: "0.12",
       data: {
         tasks: STATE.tasks || [],
         characters: STATE.characters || {},
         config: STATE.config || deepClone(DEFAULT_CONFIG),
-        power: STATE.power || 0,
         calendarCursor: STATE.calendarCursor || todayStr().slice(0,7),
         seedVersion: STATE.seedVersion || 0,
         meta: STATE.meta || { installedAt: Date.now(), completedCount: 0 },
         activity: STATE.activity || [],
+        categoryXP: STATE.categoryXP || {},
         exportMeta: {
           totalTasks: STATE.tasks?.length || 0,
           completedTasks: STATE.tasks?.filter(t => t.done)?.length || 0,
           unlockedCharacters: Object.keys(STATE.characters || {}).length,
-          totalPower: STATE.power || 0,
+          totalCategoryXP: Object.values(STATE.categoryXP || {}).reduce((a, b) => a + b, 0),
           lastActivity: STATE.activity?.[0]?.when || null
         }
       }
@@ -1039,7 +1251,7 @@
     
     const stats = fullBackup.data.exportMeta;
     toast(`📤 <strong>Full backup exported</strong><br>
-      ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalPower} power`);
+      ${stats.totalTasks} tasks, ${stats.unlockedCharacters} characters, ${stats.totalCategoryXP} total XP`);
   }
 
   function importFullBackup(backupData){
@@ -1057,7 +1269,7 @@
       }
       
       const data = backupData.data;
-      let importStats = { tasks: 0, characters: 0, power: 0, activities: 0, errors: [] };
+      let importStats = { tasks: 0, characters: 0, categoryXP: 0, activities: 0, errors: [] };
       
       // Import tasks
       if (Array.isArray(data.tasks)) {
@@ -1092,11 +1304,15 @@
               name: charData.name || `${category} Ally`,
               rarity: charData.rarity || "R",
               category: category,
-              level: Math.max(1, Number(charData.level) || 1),
-              bond: Math.max(0, Math.min(100, Number(charData.bond) || 0)),
-              xp: Math.max(0, Number(charData.xp) || 0),
-              xpToNext: Math.max(100, Number(charData.xpToNext) || 100),
-              image: charData.image || defaultPortraitForCategory(category)
+              categoryXP: Math.max(0, Number(charData.categoryXP) || 0),
+              image: charData.image || defaultPortraitForCategory(category),
+              lore: charData.lore || {
+                A: `The origins of this ${category} operative remain shrouded in mystery...`,
+                B: `Through countless missions, this ally has proven their worth time and again...`,
+                C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+              },
+              unlockedTiers: charData.unlockedTiers || [],
+              lastNotifiedTier: charData.lastNotifiedTier || null
             };
             importStats.characters++;
           }
@@ -1106,12 +1322,31 @@
         importStats.errors.push("No valid characters found in backup");
       }
       
+      // Import category XP
+      if (data.categoryXP && typeof data.categoryXP === 'object') {
+        STATE.categoryXP = {};
+        for (const [category, xp] of Object.entries(data.categoryXP)) {
+          if (CATEGORIES.includes(category)) {
+            STATE.categoryXP[category] = Math.max(0, Number(xp) || 0);
+            importStats.categoryXP += STATE.categoryXP[category];
+          }
+        }
+      } else {
+        STATE.categoryXP = {};
+        importStats.errors.push("No valid category XP found");
+      }
+      
       // Import other data
       if (data.config && typeof data.config === 'object') {
         STATE.config = {
           xpPreset: data.config.xpPreset || "Default",
           scale: data.config.scale || "Linear",
-          bossTarget: Math.max(10, Number(data.config.bossTarget) || 300),
+          characterUnlockThreshold: Math.max(10, Number(data.config.characterUnlockThreshold) || 50),
+          tierThresholds: {
+            A: Math.max(10, Number(data.config.tierThresholds?.A) || 100),
+            B: Math.max(50, Number(data.config.tierThresholds?.B) || 250),
+            C: Math.max(100, Number(data.config.tierThresholds?.C) || 500)
+          },
           weights: {
             priority: {
               Low: Number(data.config.weights?.priority?.Low) || 1,
@@ -1126,9 +1361,6 @@
         STATE.config = deepClone(DEFAULT_CONFIG);
         importStats.errors.push("No valid config found, using defaults");
       }
-      
-      STATE.power = Math.max(0, Number(data.power) || 0);
-      importStats.power = STATE.power;
       
       STATE.calendarCursor = data.calendarCursor || todayStr().slice(0,7);
       STATE.seedVersion = Number(data.seedVersion) || 0;
@@ -1163,7 +1395,7 @@
       
       const errorText = importStats.errors.length > 0 ? ` (${importStats.errors.length} warnings)` : "";
       toast(`📥 <strong>Full backup imported${errorText}</strong><br>
-        ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.power} power`);
+        ${importStats.tasks} tasks, ${importStats.characters} characters, ${importStats.categoryXP} total XP`);
       
       return importStats;
       
@@ -1213,114 +1445,6 @@
     return added;
   }
 
-  // ---------- Config ----------
-  function setupConfig(){
-    const preset = document.getElementById("xp-preset");
-    const scale = document.getElementById("xp-scale");
-    const target = document.getElementById("boss-target-input");
-    const apply = document.getElementById("apply-target");
-    
-    if(preset){ 
-      preset.value = STATE.config.xpPreset; 
-      preset.addEventListener("change", ()=>{
-        STATE.config.xpPreset = preset.value;
-        if(preset.value === "Aggressive"){
-          STATE.config.weights.priority = { Low:1, Medium:3, High:5 };
-          STATE.config.weights.estHour = 2;
-        }else if(preset.value === "Gentle"){
-          STATE.config.weights.priority = { Low:1, Medium:2, High:2 };
-          STATE.config.weights.estHour = 0.5;
-        }else{
-          STATE.config.weights.priority = deepClone(DEFAULT_CONFIG.weights.priority);
-          STATE.config.weights.estHour = 1;
-        }
-        save();
-      });
-    }
-    
-    if(scale){ 
-      scale.value = STATE.config.scale; 
-      scale.addEventListener("change", ()=>{ STATE.config.scale = scale.value; save(); }); 
-    }
-    
-    if(target){ target.value = STATE.config.bossTarget; }
-    
-    if(apply){ 
-      apply.addEventListener("click", ()=>{ 
-        const v = Number(target.value||0); 
-        if(v>=10){ 
-          STATE.config.bossTarget = v; 
-          save(); 
-          renderHeaderPower(); 
-          renderBoss(); 
-          toast("Applied boss target"); 
-        } 
-      }); 
-    }
-
-    // Import/Export buttons
-    const exportBtn = document.getElementById("export-completed");
-    const importBtn = document.getElementById("import-completed");
-    const importFile = document.getElementById("import-completed-file");
-    
-    if(exportBtn) {
-      exportBtn.textContent = "Export Full Backup";
-      exportBtn.addEventListener("click", exportFullBackup);
-    }
-    
-    if(importBtn && importFile){
-      importBtn.textContent = "Import Full Backup";
-      
-      importBtn.addEventListener("click", ()=> importFile.click());
-      importFile.addEventListener("change", async ()=>{
-        const file = importFile.files?.[0];
-        if(!file) return;
-        
-        const confirmed = confirm(
-          "⚠️ FULL BACKUP IMPORT ⚠️\n\n" +
-          "This will COMPLETELY REPLACE all your current data including:\n" +
-          "• All tasks (completed and pending)\n" +
-          "• All unlocked characters and their levels\n" +
-          "• All power and XP\n" +
-          "• All settings and configuration\n" +
-          "• All activity history\n\n" +
-          "Are you sure you want to proceed?\n\n" +
-          "(Consider exporting your current data first as a backup)"
-        );
-        
-        if (!confirmed) {
-          importFile.value = "";
-          return;
-        }
-        
-        try{
-          const text = await file.text();
-          const parsed = JSON.parse(text);
-          
-          if (parsed.version && parsed.version.includes('neon-tasks-full-backup')) {
-            importFullBackup(parsed);
-          } else if (parsed.version && parsed.version.includes('neon-tasks/v1')) {
-            const added = importCompletedTasksFromJSON(parsed);
-            toast(`📥 Imported <strong>${added}</strong> completed task(s) (legacy format)`);
-            renderAll();
-          } else if (Array.isArray(parsed)) {
-            const added = importCompletedTasksFromJSON(parsed);
-            toast(`📥 Imported <strong>${added}</strong> completed task(s)`);
-            renderAll();
-          } else {
-            throw new Error("Unrecognized backup format");
-          }
-          
-        }catch(e){
-          console.error("Import error:", e);
-          toast(`<span class="danger">Import failed: ${e.message}</span>`);
-        }finally{
-          importFile.value = "";
-        }
-      });
-    }
-  }
-
   // ---------- Reset / Seed ----------
   function setupReset(){
     const dlg = document.getElementById("confirm-reset");
@@ -1341,14 +1465,22 @@
     const t1 = new Date(now); t1.setDate(now.getDate()+0);
     const t2 = new Date(now); t2.setDate(now.getDate()+1);
     const t3 = new Date(now); t3.setDate(now.getDate()+2);
+    
     STATE.tasks.push(
       { id:uid(), title:"Daily stretch", category:"Fitness", priority:"Low", type:"repeat", start:iso(now), end:null, estimate:1, repeat:1, notes:"5 min", due:iso(t1), done:false, createdAt:new Date().toISOString() },
       { id:uid(), title:"Clean apartment", category:"Home", priority:"Medium", type:"oneoff", start:null, end:null, estimate:2, repeat:null, notes:"bathroom focus", due:iso(t2), done:false, createdAt:new Date().toISOString() },
       { id:uid(), title:"Budget review", category:"Finance", priority:"High", type:"oneoff", start:null, end:null, estimate:1, repeat:null, notes:"YNAB sync", due:iso(t3), done:false, createdAt:new Date().toISOString() }
     );
+    
+    // Add some initial category XP to demonstrate progression
+    STATE.categoryXP.Fitness = 30;
+    STATE.categoryXP.Home = 75;
+    STATE.categoryXP.Finance = 20;
+    
     addActivity("Found Aki — The Crimson Striker", 0, "character_found");
     addActivity("Completed: Daily stretch", 7, "task_completed");
     addActivity("Found Cinderjaw — The Blue‑Flame Outlaw", 0, "character_found");
+    
     STATE.seedVersion = 1;
     save();
   }
@@ -1359,6 +1491,8 @@
     console.log("Current SESSION_CHAR:", SESSION_CHAR);
     console.log("Categories:", CATEGORIES);
     console.log("CSV mapping:", CSV_TO_APP_CATEGORY);
+    console.log("Category XP:", STATE.categoryXP);
+    console.log("Characters:", STATE.characters);
   }
 
   window.debugCharacters = debugCharacters;
