@@ -1,529 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>NEON/TASKS</title>
-  <style>
-    :root{
-      --bg:#0b0f1a;
-      --bg2:#0d1222;
-      --panel:#11162a;
-      --text:#e6f1ff;
-      --muted:#9fb2c8;
-      --cyan:#00fff0;
-      --pink:#ff33cc;
-      --purple:#a26bff;
-      --yellow:#ffe066;
-      --red:#ff355e;
-      --radius:16px;
-      --radius-sm:12px;
-      --glow:0 0 18px rgba(0,255,240,.35), 0 0 6px rgba(0,255,240,.6);
-      --shadow:0 10px 30px rgba(0,0,0,.35);
-      --gap:14px;
-    }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
-      color:var(--text); background: radial-gradient(1200px 800px at 10% -10%, #0e1430,transparent 60%), linear-gradient(#0b0f1a,#090d18);
-    }
-
-    .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
-    small{opacity:.7}
-
-    /* Header */
-    .app-header{
-      position:sticky; top:0; z-index:5; background:linear-gradient(180deg, rgba(11,15,26,.95),rgba(11,15,26,.6));
-      backdrop-filter: blur(8px);
-      display:flex; align-items:center; justify-content:center; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.06)
-    }
-    .logo{font-weight:800; letter-spacing:.5px}
-    .logo span{color:var(--cyan); text-shadow:var(--glow)}
-    .logo small{font-weight:600; opacity:.7}
-
-    /* Tabs */
-    .tabs{
-      position:sticky; top:58px; z-index:5; display:flex; overflow:auto; gap:8px; padding:8px 8px 10px;
-      background:linear-gradient(180deg, rgba(11,15,26,.9), rgba(11,15,26,.5));
-      border-bottom:1px solid rgba(255,255,255,.06)
-    }
-    .tab{
-      border:1px solid rgba(255,255,255,.1); background:linear-gradient(180deg,#0f1530,#0b1028);
-      color:var(--text); padding:9px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;
-      box-shadow:0 2px 10px rgba(0,0,0,.35)
-    }
-    .tab[aria-selected="true"]{
-      border-color: rgba(0,255,240,.5);
-      box-shadow: 0 0 0 1px rgba(0,255,240,.4), inset 0 0 22px rgba(0,255,240,.12);
-      text-shadow: var(--glow);
-    }
-
-    /* Main containers */
-    main{padding:14px; display:grid; gap:16px; max-width:1100px; margin:0 auto}
-    .card{
-      background: linear-gradient(180deg, rgba(17,22,42,.9), rgba(14,18,33,.85));
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:var(--radius);
-      box-shadow: var(--shadow);
-      padding:14px;
-    }
-
-    .field{display:flex; flex-direction:column; gap:6px; margin-bottom:12px}
-    .field input, .field select, .field textarea{
-      background:#0c142b; border:1px solid rgba(255,255,255,.08); color:var(--text); padding:10px 12px;
-      border-radius:var(--radius-sm); outline: none; transition:border-color .2s
-    }
-    .field input:focus, .field select:focus, .field textarea:focus{
-      border-color:var(--cyan); box-shadow:0 0 0 2px rgba(0,255,240,.2)
-    }
-    .req{color:var(--pink)}
-
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-    .actions{display:flex; gap:10px}
-
-    .btn{
-      background:#121a35; color:var(--text); border:1px solid rgba(255,255,255,.12);
-      border-radius:12px; padding:9px 12px; cursor:pointer; transition:transform .08s ease, box-shadow .2s;
-    }
-    .btn.primary{background: linear-gradient(90deg, #132647, #11213f); border-color: rgba(0,255,240,.35)}
-    .btn:hover{box-shadow: 0 0 10px rgba(255,255,255,.1)}
-    .btn:active{transform: translateY(1px)}
-    .btn.danger{border-color: rgba(255,53,94,.45); color:#ffd7de; background:linear-gradient(90deg,#2a0f18,#2a0b17)}
-
-    .muted{color:var(--muted)}
-
-    /* Summary grid */
-    .summary-grid{
-      display:grid; gap:12px; grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom:6px;
-    }
-    @media(min-width:800px){ .summary-grid{ grid-template-columns: repeat(6, minmax(0,1fr)); } }
-    .tile{
-      position:relative; overflow:hidden; border-radius:18px; height:120px; cursor:pointer;
-      background:linear-gradient(180deg,#0f1530,#0b1028); border:1px solid rgba(255,255,255,.08);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .tile:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 20px rgba(0,255,240,.1);
-    }
-    .tile .label{
-      position:absolute; bottom:8px; left:10px; right:10px; font-weight:700; 
-      text-shadow: 0 0 12px rgba(0,255,240,.4);
-    }
-    .tile img{position:absolute; inset:auto 0 0 0; width:100%; height:100%; object-fit:cover; opacity:.9; filter:saturate(1.4)}
-
-    /* XP indicators */
-    .xp-indicator { 
-      font-size: 0.75rem; 
-      margin-top: 2px; 
-      font-weight: 600; 
-      color: var(--cyan) !important;
-      text-shadow: 0 0 8px rgba(0,255,240,.4);
-    }
-    .gacha-indicator {
-      font-size: 0.75rem; 
-      margin-top: 2px; 
-      font-weight: 700;
-      color: var(--yellow) !important;
-      text-shadow: 0 0 8px rgba(255,224,102,.6);
-      animation: pulse-glow 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 0.8; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.05); }
-    }
-
-    .tile.ready-gacha {
-      border: 2px solid var(--yellow) !important;
-      box-shadow: 0 0 20px rgba(255,224,102,.4) !important;
-      animation: gacha-pulse 2s ease-in-out infinite;
-    }
-    @keyframes gacha-pulse {
-      0%, 100% { box-shadow: 0 0 20px rgba(255,224,102,.4); }
-      50% { box-shadow: 0 0 30px rgba(255,224,102,.6); }
-    }
-
-    .tile.locked .xp-indicator {
-      color: #9fb3ff !important;
-      opacity: 0.8;
-    }
-
-    /* Activity section */
-    #view-summary {
-      display: grid;
-      gap: 18px;
-    }
-    #summary-activity .group-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    #summary-activity .activity-list {
-      display: grid;
-      row-gap: 6px;
-    }
-    .activity-row {
-      display: grid;
-      grid-template-columns: 1.4em 1fr auto;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 0;
-      border-top: 1px solid rgba(255,255,255,.06);
-    }
-    .activity-row:first-child {
-      border-top: none;
-    }
-    .activity-row .a-icn {
-      text-align: center;
-      opacity: .95;
-      font-size: 1.1em;
-    }
-    .activity-row .a-text {
-      min-width: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .activity-row .a-date {
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    /* Tasks */
-    .task-groups{display:grid; gap:12px}
-    .group .group-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
-    .group .group-body{display:grid; gap:8px}
-    .task{
-      position:relative; display:grid; gap:8px; grid-template-columns:auto 1fr auto; align-items:start;
-      background:#0b1326; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:10px;
-      overflow:hidden;
-    }
-    .task .p-dot{width:10px; height:10px; border-radius:999px; box-shadow:0 0 8px currentColor}
-    .task .title{
-      font-weight:700; margin-bottom: 4px;
-    }
-    .task .meta{
-      display:flex; flex-wrap:wrap; gap:6px; color:var(--muted); font-size:.82rem;
-    }
-    .task .meta .pill{background:#16213e; padding:3px 8px; border-radius:999px;}
-    .task .notes{
-      grid-column:1/-1; color:#cfe1ff; font-size:.95rem; margin-top:6px;
-    }
-    .task .actions{display:grid; gap:6px; justify-items:end;}
-    .task.done{opacity:.6}
-
-    .task .btn-done {
-      background: linear-gradient(90deg, #0b3d1a, #145a28) !important;
-      border: 1px solid rgba(0,255,120,.4) !important;
-      color: #a6ffcf !important;
-      font-weight: 600;
-    }
-    .task .btn-del {
-      background: linear-gradient(90deg, #3d0b15, #5a1420) !important;
-      border: 1px solid rgba(255,70,70,.45) !important;
-      color: #ffcfd6 !important;
-      font-weight: 600;
-    }
-
-    /* Characters */
-    .empty{color:#b9c5d8; border-style:dashed}
-    .chars-grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(220px,1fr))}
-    .char-card{
-      background:#0b1326; border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden;
-    }
-    .char-portrait{height:160px; background:#0f1530; position:relative; overflow:hidden;}
-    .char-portrait img{width:100%; height:100%; object-fit:cover; filter:saturate(1.3);}
-    .char-body{padding:12px; display:grid; gap:8px;}
-    .char-body strong { color: #fff; font-weight: 600; }
-    .char-body .pink { color: var(--pink) !important; font-weight: 600; }
-    .char-body .muted { color: var(--muted) !important; }
-
-    .progress{
-      height:10px; border-radius:999px; background:#0c1730; overflow:hidden;
-      border: 1px solid rgba(255,255,255,.05);
-    }
-    .progress > div{
-      height:100%; background:linear-gradient(90deg,var(--cyan),var(--pink)); 
-      transition: width 0.6s ease; box-shadow: 0 0 12px rgba(0,255,240,.3);
-    }
-
-    .tier-buttons {
-      gap: 6px !important; margin-top: 6px;
-    }
-    .tier-btn {
-      font-size: 0.85rem !important; padding: 6px 10px !important; min-width: 0; flex: 1;
-      background: linear-gradient(90deg, #1a2847, #152139) !important;
-      border: 1px solid rgba(0,255,240,.25) !important;
-      color: var(--cyan) !important; font-weight: 600;
-    }
-    .tier-btn[disabled] {
-      background: #0c1326 !important; border: 1px solid rgba(255,255,255,.08) !important;
-      color: #5a6b82 !important; cursor: not-allowed; opacity: 0.5;
-    }
-    .tier-btn[disabled]::after { content: " 🔒"; opacity: 0.6; }
-
-    /* Dialog */
-    dialog{
-      border:none; border-radius:16px; padding:0; overflow:hidden; background:transparent;
-    }
-    dialog::backdrop{background: rgba(4,6,12,.6); backdrop-filter: blur(4px)}
-    dialog form, dialog > div{
-      background: linear-gradient(180deg, rgba(17,22,42,.98), rgba(12,16,33,.95));
-      border:1px solid rgba(255,255,255,.08); padding:16px; min-width:min(92vw,560px)
-    }
-    .dialog-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
-
-    /* Toasts */
-    #toast-layer{
-      position:fixed; inset:auto 0 12px 0; display:grid; justify-items:center; gap:8px; padding:10px; 
-      pointer-events:none; z-index: 9999;
-    }
-    .toast{
-      background:linear-gradient(180deg, #132a52, #0E1B36) !important;
-      border: 1px solid rgba(0,255,240,.55) !important; color: #eafffb !important;
-      padding:10px 12px; border-radius:12px; max-width: 90vw; text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,.5) !important;
-      animation: rise 900ms ease forwards;
-    }
-    @keyframes rise{0%{transform:translateY(10px); opacity:0} 100%{transform:translateY(-10px); opacity:1}}
-
-    .toast .yellow { color: var(--yellow) !important; }
-    .cyan{color:var(--cyan)}
-
-    .zap::after{
-      content:""; position:absolute; inset:0; background: linear-gradient(90deg, transparent, rgba(0,255,240,.25), transparent);
-      animation: zap 600ms ease; pointer-events:none
-    }
-    @keyframes zap{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
-
-    /* Ensure proper hiding */
-    [hidden] { display: none !important; }
-
-    /* Stats */
-    .stats{display:flex; gap:12px; color:var(--muted); font-size:.9rem}
-  </style>
-</head>
-<body>
-
-  <header class="app-header">
-    <div class="logo">NEON/<span>TASKS</span> <small>v0.12</small></div>
-  </header>
-
-  <nav class="tabs" role="tablist" aria-label="Views">
-    <button class="tab" data-tab="summary" aria-selected="true" role="tab">Summary</button>
-    <button class="tab" data-tab="create"  aria-selected="false" role="tab">Create</button>
-    <button class="tab" data-tab="tasks"   aria-selected="false" role="tab">Tasks</button>
-    <button class="tab" data-tab="calendar" aria-selected="false" role="tab">Calendar</button>
-    <button class="tab" data-tab="characters" aria-selected="false" role="tab">Characters</button>
-    <button class="tab" data-tab="config"  aria-selected="false" role="tab">Config</button>
-  </nav>
-
-  <main id="views" tabindex="-1">
-    <!-- SUMMARY -->
-    <section id="view-summary" class="view">
-      <div id="summary-grid" class="summary-grid"></div>
-    </section>
-
-    <!-- CREATE -->
-    <section id="view-create" class="view" hidden>
-      <div class="card">
-        <h3>Add Task (quick)</h3>
-        <form id="quick-form" class="form">
-          <div class="field">
-            <label for="q-title">Title <span class="req">*</span></label>
-            <input id="q-title" name="title" placeholder="Task title" required />
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label for="q-priority">Priority</label>
-              <select id="q-priority" name="priority">
-                <option>Low</option>
-                <option selected>Medium</option>
-                <option>High</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="q-due">Due</label>
-              <input id="q-due" type="date" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label for="q-category">Category</label>
-              <select id="q-category"></select>
-            </div>
-            <div class="field">
-              <label for="q-notes">Notes</label>
-              <input id="q-notes" placeholder="Optional notes" />
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="btn primary" type="submit">Add</button>
-            <button class="btn" type="reset">Clear</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- TASKS -->
-    <section id="view-tasks" class="view" hidden>
-      <div class="card">
-        <div class="stats">
-          <div id="stat-done">Done: 0</div>
-          <div id="stat-today">Due Today: 0</div>
-          <div id="stat-total">Total: 0</div>
-        </div>
-      </div>
-      <div id="task-groups" class="task-groups"></div>
-    </section>
-
-    <!-- CALENDAR -->
-    <section id="view-calendar" class="view" hidden>
-      <div class="card">
-        <h3>Calendar</h3>
-        <p class="muted">Calendar view - placeholder</p>
-      </div>
-    </section>
-
-    <!-- CHARACTERS -->
-    <section id="view-characters" class="view" hidden>
-      <div id="chars-empty" class="card empty">No characters yet — complete tasks to unlock allies.</div>
-      <div id="chars-grid" class="chars-grid"></div>
-    </section>
-
-    <!-- CONFIG -->
-    <section id="view-config" class="view" hidden>
-      <div class="card">
-        <h3>XP settings</h3>
-        <div class="row">
-          <div class="field">
-            <label for="xp-preset">Preset</label>
-            <select id="xp-preset">
-              <option>Default</option>
-              <option>Aggressive</option>
-              <option>Gentle</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="xp-scale">Scale</label>
-            <select id="xp-scale">
-              <option>Linear</option>
-              <option>Square root</option>
-              <option>Log</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Character unlock threshold</h3>
-        <p class="muted">XP needed to unlock character (gacha mechanic)</p>
-        <div class="row">
-          <div class="field">
-            <label for="unlock-threshold-input">Unlock XP</label>
-            <input id="unlock-threshold-input" type="number" min="10" step="10" />
-          </div>
-          <div class="actions">
-            <button id="apply-unlock-threshold" class="btn primary">Apply</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Tier thresholds</h3>
-        <p class="muted">XP needed to unlock each character tier</p>
-        <div class="row">
-          <div class="field">
-            <label for="tier-a-input">Tier A XP</label>
-            <input id="tier-a-input" type="number" min="10" step="10" />
-          </div>
-          <div class="field">
-            <label for="tier-b-input">Tier B XP</label>
-            <input id="tier-b-input" type="number" min="50" step="10" />
-          </div>
-        </div>
-        <div class="row">
-          <div class="field">
-            <label for="tier-c-input">Tier C XP</label>
-            <input id="tier-c-input" type="number" min="100" step="10" />
-          </div>
-          <div class="actions">
-            <button id="apply-tier-thresholds" class="btn primary">Apply</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Data controls</h3>
-        <div class="row">
-          <button id="seed-demo" class="btn">Seed demo data</button>
-          <button id="export-completed" class="btn">Export full backup</button>
-          <button id="import-completed" class="btn">Import backup</button>
-          <input id="import-completed-file" type="file" accept="application/json,.json" style="display:none" />
-          <button id="reset-all" class="btn danger">Reset all</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Generic Lightbox -->
-  <dialog id="lightbox">
-    <div>
-      <div class="actions" style="justify-content:flex-end">
-        <button id="lightbox-close" class="btn">Close</button>
-      </div>
-      <div id="lightbox-content"></div>
-    </div>
-  </dialog>
-
-  <!-- Toasts -->
-  <div id="toast-layer" aria-live="polite" aria-atomic="true"></div>
-
-<script>
-const LS_KEY = "neon_tasks_v07";
-const CATEGORIES = ["Fitness","Home","Finance","Work","Rose","Skills","Other"];
-const PRIORITY_COLORS = { Low: "#00fff0", Medium: "#ffe066", High: "#ff355e" };
-const DEFAULT_CONFIG = {
-  characterUnlockThreshold: 50,
-  tierThresholds: { A: 100, B: 250, C: 500 },
-  weights: { priority: { Low:1, Medium:2, High:3 }, estHour: 1 }
-};
-const TIER_LABELS = { A: "Tier A", B: "Tier B", C: "Tier C" };
-
-let CHAR_POOL = {};
-let ACTIVITY = [];
-const STATE = loadState();
-
-function loadState() {
-  let s;
-  try { 
-    s = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); 
-  } catch { 
-    s = {}; 
-  }
-  return {
-    tasks: s.tasks || [],
-    characters: s.characters || {},
-    config: s.config || {...DEFAULT_CONFIG},
-    meta: s.meta || { completedCount: 0 },
-    activity: s.activity || [],
-    categoryXP: s.categoryXP || {},
-    readyToOpen: s.readyToOpen || {}
-  };
-}
-
 function save() {
   localStorage.setItem(LS_KEY, JSON.stringify(STATE));
 }
 
+// ---------- Utilities ----------
 function uid() { 
-  return Math.random().toString(36).slice(2)+Date.now().toString(36); 
+  return Math.random().toString(36).slice(2) + Date.now().toString(36); 
 }
 
 function todayStr() { 
@@ -531,14 +12,16 @@ function todayStr() {
 }
 
 function escapeHTML(s) { 
-  return (s||"").replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); 
+  return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); 
 }
 
-function defaultPortraitForCategory(cat){
+// ---------- Character Portrait Generation ----------
+function defaultPortraitForCategory(cat) {
   const color = {
     Fitness:"#23ffd9", Home:"#a26bff", Finance:"#ffe066",
     Work:"#ff33cc", Rose:"#ff6ad5", Skills:"#66ccff", Other:"#66ff99"
   }[cat] || "#6bf";
+  
   const svg = encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'>
       <defs><linearGradient id='g' x1='0' x2='1'>
@@ -551,11 +34,12 @@ function defaultPortraitForCategory(cat){
   return `data:image/svg+xml;charset=utf-8,${svg}`;
 }
 
-function placeholderPortraitForCategory(cat){
+function placeholderPortraitForCategory(cat) {
   const color = {
     Fitness:"#23ffd9", Home:"#a26bff", Finance:"#ffe066",
     Work:"#ff33cc", Rose:"#ff6ad5", Skills:"#66ccff", Other:"#66ff99"
   }[cat] || "#6bf";
+  
   const svg = encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'>
       <rect width='640' height='420' rx='26' fill='url(#g)'/>
@@ -565,11 +49,12 @@ function placeholderPortraitForCategory(cat){
   return `data:image/svg+xml;charset=utf-8,${svg}`;
 }
 
-function gachaReadyPortraitForCategory(cat){
+function gachaReadyPortraitForCategory(cat) {
   const color = {
     Fitness:"#23ffd9", Home:"#a26bff", Finance:"#ffe066",
     Work:"#ff33cc", Rose:"#ff6ad5", Skills:"#66ccff", Other:"#66ff99"
   }[cat] || "#6bf";
+  
   const svg = encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'>
       <rect width='640' height='420' rx='26' fill='${color}'/>
@@ -579,6 +64,7 @@ function gachaReadyPortraitForCategory(cat){
   return `data:image/svg+xml;charset=utf-8,${svg}`;
 }
 
+// ---------- Character System ----------
 function isUnlocked(cat) { 
   return !!STATE.characters[cat]; 
 }
@@ -606,10 +92,10 @@ function getUnlockedTiers(char) {
   return unlocked;
 }
 
-function loadCharacters(){
+function loadCharacters() {
   CHAR_POOL = {};
-  for(const cat of CATEGORIES){
-    CHAR_POOL[cat] = [1,2,3].map(n=>({
+  for(const cat of CATEGORIES) {
+    CHAR_POOL[cat] = [1,2,3].map(n => ({
       category: cat,
       image: defaultPortraitForCategory(cat),
       name: `${cat} Operative ${n}`,
@@ -623,7 +109,8 @@ function loadCharacters(){
   }
 }
 
-function toast(html){
+// ---------- UI Components ----------
+function toast(html) {
   const layer = document.getElementById("toast-layer");
   if(!layer) return;
   const t = document.createElement("div");
@@ -633,7 +120,7 @@ function toast(html){
   setTimeout(() => t.remove(), 2300);
 }
 
-function openLightbox(html){
+function openLightbox(html) {
   const dlg = document.getElementById("lightbox");
   const cont = document.getElementById("lightbox-content");
   const close = document.getElementById("lightbox-close");
@@ -643,28 +130,45 @@ function openLightbox(html){
   close.onclick = () => dlg.close();
 }
 
-function setupTabs(){
+// ---------- Tab System ----------
+function setupTabs() {
   const tabs = document.querySelectorAll(".tabs .tab");
-  tabs.forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      tabs.forEach(b=>b.setAttribute("aria-selected","false"));
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabs.forEach(b => b.setAttribute("aria-selected","false"));
       btn.setAttribute("aria-selected","true");
       const id = btn.dataset.tab;
-      document.querySelectorAll("main > section").forEach(s=> s.hidden = !s.id.endsWith(id));
-      if(id==="tasks") renderTasks();
-      if(id==="summary") renderSummary();
-      if(id==="characters") renderCharacters();
+      document.querySelectorAll("main > section").forEach(s => s.hidden = !s.id.endsWith(id));
+      
+      // Trigger renders for specific tabs
+      if(id === "tasks") renderTasks();
+      if(id === "summary") renderSummary();
+      if(id === "characters") renderCharacters();
     });
   });
 }
 
-function computeTaskXP(t){
+// ---------- XP System ----------
+function computeTaskXP(t) {
   const pr = STATE.config.weights.priority[t.priority] || 1;
   const est = Number(t.estimate || 0);
-  return Math.max(1, Math.round(pr*10 + est*5));
+  const streak = STATE.config.weights.streak || 0.5;
+  let base = pr*10 + est*STATE.config.weights.estHour*5;
+  
+  // Apply scaling
+  switch(STATE.config.scale) {
+    case "Square root": base = Math.sqrt(base)*12; break;
+    case "Log": base = Math.log10(base+1)*24; break;
+  }
+  
+  // Apply streak bonus
+  const streakLevel = (STATE.meta.completedCount % 7);
+  base += streak * streakLevel * 2;
+  
+  return Math.max(1, Math.round(base));
 }
 
-function addCategoryXP(category, xp){
+function addCategoryXP(category, xp) {
   if (!STATE.categoryXP[category]) STATE.categoryXP[category] = 0;
   STATE.categoryXP[category] += xp;
   
@@ -682,7 +186,8 @@ function addCategoryXP(category, xp){
   save();
 }
 
-function addActivity(title, xp = 0, kind = "generic"){
+// ---------- Activity System ----------
+function addActivity(title, xp = 0, kind = "generic") {
   const entry = { when: new Date().toISOString(), title, xp, kind };
   ACTIVITY.unshift(entry);
   ACTIVITY = ACTIVITY.slice(0, 100);
@@ -690,13 +195,14 @@ function addActivity(title, xp = 0, kind = "generic"){
   save();
 }
 
-function renderSummary(){
+// ---------- Summary View ----------
+function renderSummary() {
   const section = document.getElementById("view-summary");
   const grid = document.getElementById("summary-grid");
   if(!section || !grid) return;
 
   const cats = CATEGORIES.filter(c => c !== "Other");
-  grid.innerHTML = cats.map(cat=>{
+  grid.innerHTML = cats.map(cat => {
     const unlocked = isUnlocked(cat);
     const categoryXP = getCategoryXP(cat);
     const readyToOpen = STATE.readyToOpen && STATE.readyToOpen[cat];
@@ -722,8 +228,9 @@ function renderSummary(){
       </button>`;
   }).join("");
 
-  grid.querySelectorAll(".tile").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
+  // Add click handlers
+  grid.querySelectorAll(".tile").forEach(btn => {
+    btn.addEventListener("click", () => {
       const cat = btn.dataset.cat;
       const unlocked = isUnlocked(cat);
       const readyToOpen = STATE.readyToOpen && STATE.readyToOpen[cat];
@@ -755,6 +262,11 @@ function renderSummary(){
     });
   });
 
+  // Render activity section
+  renderActivity(section);
+}
+
+function renderActivity(section) {
   let act = document.getElementById("summary-activity");
   if (!act) {
     act = document.createElement("div");
@@ -770,11 +282,11 @@ function renderSummary(){
       <span class="muted">${recent.length ? "" : "No recent actions yet"}</span>
     </div>
     <div class="activity-list" role="list">
-      ${recent.map(e=>{
+      ${recent.map(e => {
         const d = new Date(e.when);
         const when = d.toLocaleString(undefined, { month:"short", day:"numeric" });
-        const iconFor = (kind)=>{
-          switch(kind){
+        const iconFor = (kind) => {
+          switch(kind) {
             case "character_found": return "🎉";
             case "task_completed":  return "⚡";
             case "tier_unlock":     return "🌟";
@@ -791,10 +303,11 @@ function renderSummary(){
     </div>`;
 }
 
-function unlockCharacterMaybe(category, xpGained){
+// ---------- Character Unlock System ----------
+function unlockCharacterMaybe(category, xpGained) {
   const categoryXP = getCategoryXP(category);
   
-  if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
+  if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold) {
     STATE.readyToOpen = STATE.readyToOpen || {};
     STATE.readyToOpen[category] = true;
     save();
@@ -856,7 +369,8 @@ function openGachaFor(category) {
   `);
 }
 
-function renderCharacters(){
+// ---------- Characters View ----------
+function renderCharacters() {
   const empty = document.getElementById("chars-empty");
   const grid = document.getElementById("chars-grid");
   if(!empty || !grid) return;
@@ -897,6 +411,7 @@ function renderCharacters(){
     `;
   }).join('');
 
+  // Add tier button handlers
   grid.querySelectorAll('.tier-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
       const cat = btn.dataset.charCat;
@@ -916,39 +431,13 @@ function renderCharacters(){
   });
 }
 
-document.addEventListener("submit", (e)=>{
-  if(e.target && e.target.id === "quick-form"){
-    e.preventDefault();
-    const t = {
-      id: uid(),
-      title: document.getElementById("q-title").value.trim(),
-      due: document.getElementById("q-due").value || null,
-      priority: document.getElementById("q-priority").value,
-      category: document.getElementById("q-category").value,
-      notes: document.getElementById("q-notes").value.trim(),
-      type: "oneoff",
-      estimate: 1,
-      done: false,
-      createdAt: new Date().toISOString()
-    };
-    if(!t.title){ 
-      document.getElementById("q-title").reportValidity(); 
-      return; 
-    }
-    STATE.tasks.push(t); 
-    save();
-    toast(`<strong class="cyan">Task created</strong>: ${escapeHTML(t.title)}`);
-    e.target.reset();
-    renderTasks();
-  }
-});
-
-function renderTasks(){
+// ---------- Task System ----------
+function renderTasks() {
   const groupsEl = document.getElementById("task-groups");
   if(!groupsEl) return;
 
-  const doneCount = STATE.tasks.filter(t=>t.done).length;
-  const todayCount = STATE.tasks.filter(t=>t.due === todayStr() && !t.done).length;
+  const doneCount = STATE.tasks.filter(t => t.done).length;
+  const todayCount = STATE.tasks.filter(t => t.due === todayStr() && !t.done).length;
   const statDone = document.getElementById("stat-done");
   const statToday = document.getElementById("stat-today");
   const statTotal = document.getElementById("stat-total");
@@ -957,7 +446,7 @@ function renderTasks(){
   if(statTotal) statTotal.textContent = `Total: ${STATE.tasks.length}`;
 
   const tasks = STATE.tasks.filter(t => !t.done);
-  if(tasks.length === 0){
+  if(tasks.length === 0) {
     groupsEl.innerHTML = `<div class="card muted">No active tasks. Create some in the Create tab!</div>`;
     return;
   }
@@ -970,14 +459,15 @@ function renderTasks(){
     <div class="group-body">${tasks.map(renderTaskCard).join("")}</div>
   </div>`;
 
-  groupsEl.querySelectorAll(".task").forEach(card=>{
-    card.querySelector(".btn-done").addEventListener("click", ()=>{
+  // Add task handlers
+  groupsEl.querySelectorAll(".task").forEach(card => {
+    card.querySelector(".btn-done").addEventListener("click", () => {
       completeTask(card.dataset.id);
       card.classList.add("zap");
-      setTimeout(()=>renderTasks(), 620);
+      setTimeout(() => renderTasks(), 620);
     });
-    card.querySelector(".btn-del").addEventListener("click", ()=>{
-      if(confirm("Delete this task?")){
+    card.querySelector(".btn-del").addEventListener("click", () => {
+      if(confirm("Delete this task?")) {
         deleteTask(card.dataset.id);
         renderTasks();
       }
@@ -985,7 +475,7 @@ function renderTasks(){
   });
 }
 
-function renderTaskCard(t){
+function renderTaskCard(t) {
   const color = PRIORITY_COLORS[t.priority] || "#9cf";
   return `<div class="task" data-id="${t.id}">
     <div class="p-dot" style="color:${color}"></div>
@@ -1005,9 +495,10 @@ function renderTaskCard(t){
   </div>`;
 }
 
-function completeTask(id){
-  const t = STATE.tasks.find(x=>x.id===id);
+function completeTask(id) {
+  const t = STATE.tasks.find(x => x.id === id);
   if(!t || t.done) return;
+  
   t.done = true;
   t.completedAt = new Date().toISOString();
   STATE.meta.completedCount++;
@@ -1023,13 +514,131 @@ function completeTask(id){
   renderSummary();
 }
 
-function deleteTask(id){ 
-  STATE.tasks = STATE.tasks.filter(x=>x.id!==id); 
+function deleteTask(id) { 
+  STATE.tasks = STATE.tasks.filter(x => x.id !== id); 
   save(); 
 }
 
-function setupConfig(){
+// ---------- Task Creation ----------
+function setupTaskCreation() {
+  document.addEventListener("submit", (e) => {
+    if(e.target && e.target.id === "quick-form") {
+      e.preventDefault();
+      const t = {
+        id: uid(),
+        title: document.getElementById("q-title").value.trim(),
+        due: document.getElementById("q-due").value || null,
+        priority: document.getElementById("q-priority").value,
+        category: document.getElementById("q-category").value,
+        notes: document.getElementById("q-notes").value.trim(),
+        type: "oneoff",
+        estimate: 1,
+        done: false,
+        createdAt: new Date().toISOString()
+      };
+      if(!t.title) { 
+        document.getElementById("q-title").reportValidity(); 
+        return; 
+      }
+      STATE.tasks.push(t); 
+      save();
+      toast(`<strong class="cyan">Task created</strong>: ${escapeHTML(t.title)}`);
+      e.target.reset();
+      renderTasks();
+    }
+  });
+}
+
+// ---------- Configuration ----------
+function setupConfig() {
+  // XP preset handling
+  const presetSelect = document.getElementById("xp-preset");
+  const scaleSelect = document.getElementById("xp-scale");
+  
+  if(presetSelect) {
+    presetSelect.value = STATE.config.xpPreset;
+    presetSelect.addEventListener("change", () => {
+      STATE.config.xpPreset = presetSelect.value;
+      
+      // Apply preset weights
+      switch(presetSelect.value) {
+        case "Aggressive":
+          STATE.config.weights = { priority: { Low:2, Medium:4, High:6 }, estHour: 2, streak: 1 };
+          break;
+        case "Gentle":
+          STATE.config.weights = { priority: { Low:0.5, Medium:1, High:1.5 }, estHour: 0.5, streak: 0.25 };
+          break;
+        default: // Default
+          STATE.config.weights = { priority: { Low:1, Medium:2, High:3 }, estHour: 1, streak: 0.5 };
+      }
+      save();
+      toast("XP preset updated!");
+    });
+  }
+  
+  if(scaleSelect) {
+    scaleSelect.value = STATE.config.scale;
+    scaleSelect.addEventListener("change", () => {
+      STATE.config.scale = scaleSelect.value;
+      save();
+      toast("XP scale updated!");
+    });
+  }
+
+  // Unlock threshold
+  const unlockInput = document.getElementById("unlock-threshold-input");
+  const unlockApply = document.getElementById("apply-unlock-threshold");
+  
+  if(unlockInput) unlockInput.value = STATE.config.characterUnlockThreshold;
+  if(unlockApply) {
+    unlockApply.addEventListener("click", () => {
+      const val = parseInt(unlockInput.value);
+      if(val >= 10) {
+        STATE.config.characterUnlockThreshold = val;
+        save();
+        toast("Unlock threshold updated!");
+        renderSummary();
+      } else {
+        toast("Threshold must be at least 10 XP");
+      }
+    });
+  }
+
+  // Tier thresholds
+  const tierA = document.getElementById("tier-a-input");
+  const tierB = document.getElementById("tier-b-input");
+  const tierC = document.getElementById("tier-c-input");
+  const tierApply = document.getElementById("apply-tier-thresholds");
+  
+  if(tierA) tierA.value = STATE.config.tierThresholds.A;
+  if(tierB) tierB.value = STATE.config.tierThresholds.B;
+  if(tierC) tierC.value = STATE.config.tierThresholds.C;
+  
+  if(tierApply) {
+    tierApply.addEventListener("click", () => {
+      const a = parseInt(tierA.value);
+      const b = parseInt(tierB.value);
+      const c = parseInt(tierC.value);
+      if(a >= 10 && b >= 50 && c >= 100 && a < b && b < c) {
+        STATE.config.tierThresholds = {A: a, B: b, C: c};
+        save();
+        toast("Tier thresholds updated!");
+        renderCharacters();
+      } else {
+        toast("Invalid thresholds - must be A < B < C and meet minimums");
+      }
+    });
+  }
+
+  // Data controls
+  setupDataControls();
+}
+
+function setupDataControls() {
   const seedDemo = document.getElementById("seed-demo");
+  const exportBtn = document.getElementById("export-completed");
+  const importBtn = document.getElementById("import-completed");
+  const importFile = document.getElementById("import-completed-file");
   const resetBtn = document.getElementById("reset-all");
   
   if(seedDemo) {
@@ -1037,7 +646,9 @@ function setupConfig(){
       const demoTasks = [
         {id: uid(), title: "Morning workout", category: "Fitness", priority: "Medium", due: todayStr(), estimate: 1, done: false, createdAt: new Date().toISOString(), type: "oneoff"},
         {id: uid(), title: "Clean kitchen", category: "Home", priority: "Low", due: todayStr(), estimate: 0.5, done: false, createdAt: new Date().toISOString(), type: "oneoff"},
-        {id: uid(), title: "Review budget", category: "Finance", priority: "High", due: todayStr(), estimate: 2, done: false, createdAt: new Date().toISOString(), type: "oneoff"}
+        {id: uid(), title: "Review budget", category: "Finance", priority: "High", due: todayStr(), estimate: 2, done: false, createdAt: new Date().toISOString(), type: "oneoff"},
+        {id: uid(), title: "Team meeting prep", category: "Work", priority: "High", due: todayStr(), estimate: 1.5, done: false, createdAt: new Date().toISOString(), type: "oneoff"},
+        {id: uid(), title: "Learn new skill", category: "Skills", priority: "Medium", due: todayStr(), estimate: 2, done: false, createdAt: new Date().toISOString(), type: "oneoff"}
       ];
       STATE.tasks.push(...demoTasks);
       save();
@@ -1046,30 +657,149 @@ function setupConfig(){
     });
   }
 
+  if(exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      try {
+        const data = JSON.stringify(STATE, null, 2);
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `neon-tasks-backup-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast("Data exported successfully!");
+      } catch(err) {
+        toast("Export failed - please try again");
+        console.error("Export error:", err);
+      }
+    });
+  }
+
+  if(importBtn && importFile) {
+    importBtn.addEventListener("click", () => {
+      importFile.click();
+    });
+    
+    importFile.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          // Validate the data structure
+          if(!data.tasks || !Array.isArray(data.tasks)) {
+            throw new Error("Invalid backup file - missing tasks array");
+          }
+          
+          // Merge imported data with current state
+          Object.assign(STATE, {
+            tasks: data.tasks || [],
+            characters: data.characters || {},
+            config: Object.assign({}, DEFAULT_CONFIG, data.config || {}),
+            meta: Object.assign({}, STATE.meta, data.meta || {}),
+            activity: data.activity || [],
+            categoryXP: data.categoryXP || {},
+            readyToOpen: data.readyToOpen || {}
+          });
+          
+          save();
+          toast("Data imported successfully! Refreshing...");
+          
+          // Refresh the UI
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+          
+        } catch(err) {
+          toast("Import failed - invalid file format");
+          console.error("Import error:", err);
+        }
+      };
+      reader.readAsText(file);
+      
+      // Clear the file input so the same file can be imported again if needed
+      e.target.value = '';
+    });
+  }
+
   if(resetBtn) {
     resetBtn.addEventListener("click", () => {
-      if(confirm("Reset all data? This cannot be undone.")) {
+      if(confirm("Reset all data? This will erase all tasks, characters, XP, and settings. This cannot be undone.")) {
         localStorage.removeItem(LS_KEY);
-        location.reload();
+        toast("Data reset! Refreshing...");
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
       }
     });
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// ---------- App Initialization ----------
+function init() {
   ACTIVITY = STATE.activity || [];
   
+  // Setup category options
   const qCat = document.getElementById("q-category");
-  if (qCat) qCat.innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+  if (qCat) qCat.innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join("");
 
+  // Initialize systems
   setupTabs();
+  setupTaskCreation();
   setupConfig();
   loadCharacters();
+  
+  // Initial render
   renderSummary();
   renderTasks();
   renderCharacters();
-});
+}
 
-</script>
-</body>
-</html>
+// ---------- App Startup ----------
+document.addEventListener("DOMContentLoaded", init);/* NEON/TASKS v0.12 — Character-focused progression with tiers and lore */
+
+// ---------- Constants ----------
+const LS_KEY = "neon_tasks_v07";
+const CATEGORIES = ["Fitness","Home","Finance","Work","Rose","Skills","Other"];
+const PRIORITY_COLORS = { Low: "#00fff0", Medium: "#ffe066", High: "#ff355e" };
+const DEFAULT_CONFIG = {
+  xpPreset: "Default",
+  scale: "Linear",
+  characterUnlockThreshold: 50,
+  tierThresholds: { A: 100, B: 250, C: 500 },
+  weights: { priority: { Low:1, Medium:2, High:3 }, estHour: 1, streak: 0.5 }
+};
+const TIER_LABELS = { A: "Tier A", B: "Tier B", C: "Tier C" };
+
+// ---------- State ----------
+let CHAR_POOL = {};
+let ACTIVITY = [];
+const STATE = loadState();
+
+// ---------- State Management ----------
+function loadState() {
+  let s;
+  try { 
+    s = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); 
+  } catch { 
+    s = {}; 
+  }
+  return {
+    tasks: s.tasks || [],
+    characters: s.characters || {},
+    config: Object.assign({}, DEFAULT_CONFIG, s.config || {}),
+    meta: s.meta || { completedCount: 0 },
+    activity: s.activity || [],
+    categoryXP: s.categoryXP || {},
+    readyToOpen: s.readyToOpen || {}
+  };
+}
+
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify
