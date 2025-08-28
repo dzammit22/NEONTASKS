@@ -200,6 +200,8 @@
 
       // Setup all components
       setupTabs();
+      setupConfig();
+      setupReset();
       console.log("✅ Tabs setup complete");
 
       // Render all views
@@ -207,7 +209,39 @@
       console.log("✅ Initial render complete");
       
       // Add demo data if it's a fresh install
-      addDemoData();
+      if (STATE.activity.length === 0) {
+        console.log("🎯 Adding initial demo data...");
+        
+        // Add some XP to categories
+        STATE.categoryXP.Fitness = 30;
+        STATE.categoryXP.Home = 75; // This will unlock a character
+        STATE.categoryXP.Work = 20;
+        
+        // Add some activity
+        STATE.activity = [
+          { when: new Date().toISOString(), title: "Started using NEON/TASKS", xp: 0, kind: "generic" },
+          { when: new Date(Date.now() - 3600000).toISOString(), title: "Completed morning workout", xp: 25, kind: "task_completed" }
+        ];
+        
+        // Unlock Home character since it has 75 XP
+        if (STATE.categoryXP.Home >= STATE.config.characterUnlockThreshold) {
+          const char = SESSION_CHAR.Home;
+          STATE.characters.Home = {
+            name: char.name,
+            rarity: char.rarity,
+            category: "Home",
+            categoryXP: STATE.categoryXP.Home,
+            image: char.image,
+            lore: char.lore,
+            unlockedTiers: [],
+            lastNotifiedTier: null
+          };
+        }
+        
+        save();
+        renderSummary(); // Re-render with new data
+        console.log("✅ Initial demo data added");
+      }
 
     } catch (error) {
       console.error("❌ Initialization failed:", error);
@@ -411,45 +445,167 @@
       return STATE;
     },
     reset: () => {
-      localStorage.removeItem(LS_KEY);
-      location.reload();
+      if(confirm("Reset all data? This cannot be undone!")) {
+        localStorage.removeItem(LS_KEY);
+        location.reload();
+      }
+    },
+    seed: () => {
+      seedDemo();
+      toast("🌱 Demo data added!");
+      renderSummary();
     }
   };
 
-  // Add some initial demo data
-  function addDemoData() {
-    if (STATE.activity.length === 0) {
-      console.log("🎯 Adding demo data...");
-      
-      // Add some XP to categories
-      STATE.categoryXP.Fitness = 30;
-      STATE.categoryXP.Home = 75; // This will unlock a character
-      STATE.categoryXP.Work = 20;
-      
-      // Add some activity
-      STATE.activity = [
-        { when: new Date().toISOString(), title: "Started using NEON/TASKS", xp: 0, kind: "generic" },
-        { when: new Date(Date.now() - 3600000).toISOString(), title: "Completed morning workout", xp: 25, kind: "task_completed" }
-      ];
-      
-      // Unlock Home character since it has 75 XP
-      if (STATE.categoryXP.Home >= STATE.config.characterUnlockThreshold) {
-        const char = SESSION_CHAR.Home;
-        STATE.characters.Home = {
-          name: char.name,
-          rarity: char.rarity,
-          category: "Home",
-          categoryXP: STATE.categoryXP.Home,
-          image: char.image,
-          lore: char.lore,
-          unlockedTiers: [],
-          lastNotifiedTier: null
-        };
-      }
-      
-      save();
-      console.log("✅ Demo data added");
+  // ---------- Config & Reset ----------
+  function setupConfig(){
+    console.log("⚙️ Setting up config...");
+    
+    const seedBtn = document.getElementById("seed-demo");
+    const resetBtn = document.getElementById("reset-all");
+    
+    if(seedBtn) {
+      seedBtn.addEventListener("click", ()=> {
+        console.log("🌱 Seeding demo data...");
+        seedDemo();
+        toast("🌱 Demo data added!");
+        renderSummary();
+      });
+      console.log("✅ Seed button connected");
+    } else {
+      console.warn("⚠️ Seed button not found");
     }
+    
+    if(resetBtn) {
+      resetBtn.addEventListener("click", ()=> {
+        if(confirm("Reset all data? This cannot be undone!")) {
+          console.log("🔄 Resetting all data...");
+          localStorage.removeItem(LS_KEY);
+          location.reload();
+        }
+      });
+      console.log("✅ Reset button connected");
+    } else {
+      console.warn("⚠️ Reset button not found");
+    }
+  }
+
+  function setupReset(){
+    console.log("🔄 Setting up reset dialog...");
+    const dlg = document.getElementById("confirm-reset");
+    const open = document.getElementById("reset-all");
+    const yes = document.getElementById("reset-confirm-btn");
+    const no = document.getElementById("reset-cancel-btn");
+    
+    if(open && dlg && yes && no) {
+      open.addEventListener("click", ()=> dlg.showModal());
+      no.addEventListener("click", ()=> dlg.close());
+      yes.addEventListener("click", ()=> {
+        localStorage.removeItem(LS_KEY);
+        location.reload();
+      });
+      console.log("✅ Reset dialog connected");
+    } else {
+      console.warn("⚠️ Reset dialog elements not found", {
+        open: !!open, dialog: !!dlg, yes: !!yes, no: !!no
+      });
+    }
+  }
+
+  function seedDemo(){
+    console.log("🌱 Adding seed data...");
+    
+    const now = new Date();
+    const iso = (d)=> d.toISOString().slice(0,10);
+    const t1 = new Date(now); t1.setDate(now.getDate());
+    const t2 = new Date(now); t2.setDate(now.getDate()+1);
+    const t3 = new Date(now); t3.setDate(now.getDate()+2);
+    
+    // Add some demo tasks
+    if (!STATE.tasks) STATE.tasks = [];
+    STATE.tasks.push(
+      { 
+        id: uid(), 
+        title: "Daily stretch", 
+        category: "Fitness", 
+        priority: "Low", 
+        type: "repeat", 
+        start: iso(now), 
+        end: null, 
+        estimate: 1, 
+        repeat: 1, 
+        notes: "5 min morning routine", 
+        due: iso(t1), 
+        done: false, 
+        createdAt: new Date().toISOString() 
+      },
+      { 
+        id: uid(), 
+        title: "Clean apartment", 
+        category: "Home", 
+        priority: "Medium", 
+        type: "oneoff", 
+        start: null, 
+        end: null, 
+        estimate: 2, 
+        repeat: null, 
+        notes: "Focus on bathroom and kitchen", 
+        due: iso(t2), 
+        done: false, 
+        createdAt: new Date().toISOString() 
+      },
+      { 
+        id: uid(), 
+        title: "Budget review", 
+        category: "Finance", 
+        priority: "High", 
+        type: "oneoff", 
+        start: null, 
+        end: null, 
+        estimate: 1, 
+        repeat: null, 
+        notes: "Check monthly expenses", 
+        due: iso(t3), 
+        done: false, 
+        createdAt: new Date().toISOString() 
+      }
+    );
+    
+    // Add some initial category XP
+    STATE.categoryXP.Fitness = 45;  // Close to unlock
+    STATE.categoryXP.Home = 75;     // Unlocked with extra XP
+    STATE.categoryXP.Finance = 30;  // Some progress
+    STATE.categoryXP.Work = 15;     // Just started
+    
+    // Add some activity history
+    STATE.activity = [
+      { when: new Date().toISOString(), title: "Demo data seeded", xp: 0, kind: "generic" },
+      { when: new Date(Date.now() - 1800000).toISOString(), title: "Completed: Morning workout", xp: 25, kind: "task_completed" },
+      { when: new Date(Date.now() - 3600000).toISOString(), title: "Found Home Operative 2", xp: 0, kind: "character_found" }
+    ];
+    
+    // Unlock Home character (has enough XP)
+    if (STATE.categoryXP.Home >= STATE.config.characterUnlockThreshold) {
+      const char = SESSION_CHAR.Home;
+      STATE.characters.Home = {
+        name: char.name,
+        rarity: char.rarity,
+        category: "Home",
+        categoryXP: STATE.categoryXP.Home,
+        image: char.image,
+        lore: char.lore,
+        unlockedTiers: [],
+        lastNotifiedTier: null
+      };
+      console.log("✅ Home character unlocked");
+    }
+    
+    // Mark as seeded
+    STATE.seedVersion = 1;
+    STATE.meta.completedCount = 3; // Some completed tasks
+    
+    save();
+    console.log("✅ Seed data complete:", STATE);
   }
 
   // Initialize immediately
