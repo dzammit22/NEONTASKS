@@ -954,58 +954,101 @@
   }
 
   // ---------- Characters ----------
-  function unlockCharacterMaybe(category, xpGained){
-    const categoryXP = getCategoryXP(category);
+  // Replace the unlockCharacterMaybe function with this version:
+
+function unlockCharacterMaybe(category, xpGained){
+  const categoryXP = getCategoryXP(category);
+  
+  // Check if we should unlock the character (gacha mechanic trigger)
+  if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
+    const availableChars = CHAR_POOL[category] || [];
+    let pick;
     
-    // Check if we should unlock the character (gacha mechanic trigger)
-    if(!STATE.characters[category] && categoryXP >= STATE.config.characterUnlockThreshold){
-      // Randomly pick from the available characters in this category (gacha surprise!)
-      const availableChars = CHAR_POOL[category] || [];
-      let pick;
+    if (availableChars.length > 0) {
+      // STEP 1: Generate random image filename from category
+      const categorySlug = category.toLowerCase().replace(/\s+/g, '-');
+      const randomImageNumber = Math.floor(Math.random() * 3) + 1; // Assumes 1-3 images per category
+      const randomImageFilename = `${categorySlug}-${randomImageNumber}.png`;
       
-      if (availableChars.length > 0) {
-        // Random selection for the gacha unlock
-        pick = availableChars[Math.floor(Math.random() * availableChars.length)];
-      } else {
-        // Fallback if no characters available
+      // STEP 2: Find character data that matches this image filename
+      pick = availableChars.find(char => {
+        const charImageFilename = char.image.split('/').pop(); // Get just the filename
+        return charImageFilename === randomImageFilename;
+      });
+      
+      // STEP 3: If no match found, fallback to first character with corrected image
+      if (!pick && availableChars.length > 0) {
+        pick = availableChars[0];
+        // Update the image path to match our random selection
         pick = {
-          name: `${category} Ally`, 
-          image: defaultPortraitForCategory(category), 
-          rarity: "R", 
-          category,
-          lore: {
-            A: `The origins of this ${category} operative remain shrouded in mystery...`,
-            B: `Through countless missions, this ally has proven their worth time and again...`,
-            C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
-          }
+          ...pick,
+          image: `assets/characters/${categorySlug}/${randomImageFilename}`
         };
       }
-      
-      // Ensure lore exists
-      if (!pick.lore) {
-        pick.lore = {
-          A: pick.lore?.A || `The origins of this ${category} operative remain shrouded in mystery...`,
-          B: pick.lore?.B || `Through countless missions, this ally has proven their worth time and again...`,
-          C: pick.lore?.C || `At the pinnacle of their abilities, they stand as a legend among operatives...`
-        };
-      }
-      
-      STATE.characters[category] = {
-        name: pick.name, 
-        rarity: pick.rarity || "R", 
-        category, 
-        categoryXP: categoryXP,
-        image: pick.image,
-        lore: pick.lore,
-        unlockedTiers: [],
-        lastNotifiedTier: null
+    } else {
+      // Fallback if no characters available
+      const categorySlug = category.toLowerCase().replace(/\s+/g, '-');
+      const randomImageNumber = Math.floor(Math.random() * 3) + 1;
+      pick = {
+        name: `${category} Ally`, 
+        image: `assets/characters/${categorySlug}/${categorySlug}-${randomImageNumber}.png`, 
+        rarity: "R", 
+        category,
+        lore: {
+          A: `The origins of this ${category} operative remain shrouded in mystery...`,
+          B: `Through countless missions, this ally has proven their worth time and again...`,
+          C: `At the pinnacle of their abilities, they stand as a legend among operatives...`
+        }
       };
-      
-      addActivity(`Found ${pick.name}`, 0, "character_found");
-      toast(`🎉 <strong>Unlocked</strong>: ${pick.name} (<span class="pink">${pick.rarity}</span>)`);
-      save();
     }
+    
+    // Ensure lore exists
+    if (!pick.lore) {
+      pick.lore = {
+        A: pick.lore?.A || `The origins of this ${category} operative remain shrouded in mystery...`,
+        B: pick.lore?.B || `Through countless missions, this ally has proven their worth time and again...`,
+        C: pick.lore?.C || `At the pinnacle of their abilities, they stand as a legend among operatives...`
+      };
+    }
+    
+    STATE.characters[category] = {
+      name: pick.name, 
+      rarity: pick.rarity || "R", 
+      category, 
+      categoryXP: categoryXP,
+      image: pick.image,
+      lore: pick.lore,
+      unlockedTiers: [],
+      lastNotifiedTier: null
+    };
+    
+    addActivity(`Found ${pick.name}`, 0, "character_found");
+    toast(`🎉 <strong>Unlocked</strong>: ${pick.name} (<span class="pink">${pick.rarity}</span>)`);
+    save();
   }
+}
+
+// BONUS: Enhanced debug function to see the filename mappings
+function debugCharacters() {
+  console.log("=== CHARACTER DEBUG INFO ===");
+  console.log("Current CHAR_POOL:", CHAR_POOL);
+  console.log("Current SESSION_CHAR:", SESSION_CHAR);
+  
+  // Show filename mappings
+  console.log("\n=== Filename Mappings ===");
+  for (const [category, chars] of Object.entries(CHAR_POOL)) {
+    console.log(`\n${category}:`);
+    chars.forEach((char, index) => {
+      const filename = char.image.split('/').pop();
+      console.log(`  ${filename} → ${char.name}`);
+    });
+  }
+  
+  console.log("Category XP:", STATE.categoryXP);
+  console.log("Unlocked Characters:", STATE.characters);
+}
+
+window.debugCharacters = debugCharacters;
 
   function renderCharacters(){
     ensureLockedCharCSS();
