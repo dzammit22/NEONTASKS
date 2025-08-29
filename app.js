@@ -234,14 +234,15 @@
       console.log("CSV parsed - rows:", rows.length);
       
       const idx = {
-        cat: header.findIndex(h => h && /category/i.test(h.trim())),
-        img: header.findIndex(h => h && /image/i.test(h.trim())), 
-        name: header.findIndex(h => h && /name.*title|title.*name|name/i.test(h.trim())),
-        rarity: header.findIndex(h => h && /rarity/i.test(h.trim())),
-        loreA: header.findIndex(h => h && /lore_a/i.test(h.trim())),
-        loreB: header.findIndex(h => h && /lore_b/i.test(h.trim())),
-        loreC: header.findIndex(h => h && /lore_c/i.test(h.trim()))
-      };
+  cat: header.findIndex(h => h && /category/i.test(h.trim())),
+  img: header.findIndex(h => h && /image/i.test(h.trim())), 
+  name: header.findIndex(h => h && /name.*title|title.*name|name/i.test(h.trim())),
+  rarity: header.findIndex(h => h && /rarity/i.test(h.trim())),
+  // FIXED: Updated lore column patterns to match your actual CSV headers
+  loreA: header.findIndex(h => h && /lore.*a/i.test(h.trim())),
+  loreB: header.findIndex(h => h && /lore.*b/i.test(h.trim())),
+  loreC: header.findIndex(h => h && /lore.*c/i.test(h.trim()))
+};
       
       console.log("Column indices:", idx);
       
